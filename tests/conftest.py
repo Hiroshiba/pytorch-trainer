@@ -1,47 +1,19 @@
-import os
-import subprocess
-import sys
+import pytest
 
-from chainer import testing
-from chainer.testing import parameterized
+from chainer.backends import cuda
+import chainerx
 
 
-_pairwise_parameterize = (
-    os.environ.get('CHAINER_TEST_PAIRWISE_PARAMETERIZATION', 'never'))
-assert _pairwise_parameterize in ('never', 'always')
+if not chainerx.is_available():
+    # Skip all ChainerX tests if ChainerX is unavailable.
+    # TODO(kmaehashi) This is an tentative fix. This file should be removed
+    # once chainer-test supports ChainerX.
+    pytest.mark.chainerx = pytest.mark.skip
 
 
-def _is_pip_installed():
-    try:
-        import pip  # NOQA
-        return True
-    except ImportError:
-        return False
+def pytest_runtest_teardown(item, nextitem):
+    if cuda.available:
+        assert cuda.cupy.cuda.runtime.getDevice() == 0
 
 
-def _is_in_ci():
-    ci_name = os.environ.get('CHAINER_CI', '')
-    return ci_name != ''
-
-
-def pytest_configure(config):
-    # Print installed packages
-    if _is_in_ci() and _is_pip_installed():
-        print("***** Installed packages *****", flush=True)
-        subprocess.check_call([sys.executable, '-m', 'pip', 'freeze', '--all'])
-
-
-def pytest_collection(session):
-    # Perform pairwise testing.
-    # TODO(kataoka): This is a tentative fix. Discuss its public interface.
-    if _pairwise_parameterize == 'always':
-        pairwise_product_dict = parameterized._pairwise_product_dict
-        testing.product_dict = pairwise_product_dict
-        parameterized.product_dict = pairwise_product_dict
-
-
-def pytest_collection_finish(session):
-    if _pairwise_parameterize == 'always':
-        product_dict = parameterized._product_dict_orig
-        testing.product_dict = product_dict
-        parameterized.product_dict = product_dict
+# testing.run_module(__name__, __file__)
