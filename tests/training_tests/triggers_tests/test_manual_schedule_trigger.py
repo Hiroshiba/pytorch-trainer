@@ -8,7 +8,6 @@ import numpy as np
 import six
 import torch
 
-from chainer import serializers
 from chainer import testing
 from chainer.testing import condition
 from chainer import training

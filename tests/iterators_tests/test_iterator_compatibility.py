@@ -5,7 +5,6 @@ import itertools
 import unittest
 
 from chainer import iterators
-from chainer import serializers
 from chainer import testing
 
 

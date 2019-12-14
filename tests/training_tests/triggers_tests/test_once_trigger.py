@@ -1,15 +1,11 @@
 from __future__ import division
 
-import copy
-import io
 import random
 import tempfile
 import unittest
 
-import numpy as np
 import torch
 
-from chainer import serializers
 from chainer import testing
 from chainer.testing import condition
 from chainer import training

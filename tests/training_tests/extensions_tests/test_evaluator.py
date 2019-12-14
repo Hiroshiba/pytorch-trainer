@@ -6,7 +6,6 @@ from torch import nn
 
 import chainer
 from chainer import backend
-from chainer.backends import _cpu
 from chainer import dataset
 from chainer import iterators
 from chainer import testing

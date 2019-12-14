@@ -9,9 +9,7 @@ import torch
 from torch import nn
 
 import chainer
-from chainer import links
 from chainer import testing
-from chainer.testing import attr
 from chainer import training
 
 
@@ -26,18 +24,6 @@ class Model(nn.Module):
         return self.l(x).mean()
 
 
-class Dataset(chainer.dataset.DatasetMixin):
-
-    def __init__(self, values):
-        self.values = values
-
-    def __len__(self):
-        return len(self.values)
-
-    def get_example(self, i):
-        return torch.DoubleTensor([self.values[i]])
-
-
 class TestFailOnNonNumber(unittest.TestCase):
 
     def setUp(self):
@@ -47,7 +33,7 @@ class TestFailOnNonNumber(unittest.TestCase):
         self.model = Model()
         self.optimizer = torch.optim.Adam(self.model.parameters())
 
-        self.dataset = Dataset([i for i in range(self.n_data)])
+        self.dataset = torch.DoubleTensor([i for i in range(self.n_data)])
         self.iterator = chainer.iterators.SerialIterator(
             self.dataset, 1, shuffle=False)
         self.temp_dir = tempfile.mkdtemp()

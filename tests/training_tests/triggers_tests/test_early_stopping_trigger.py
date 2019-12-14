@@ -2,6 +2,7 @@ import unittest
 
 import numpy
 import pytest
+import torch
 
 import chainer
 from chainer import testing
@@ -30,7 +31,7 @@ class TestEarlyStoppingTrigger(unittest.TestCase):
 
         accuracies = [0.5, 0.5, 0.6, 0.7, 0.6, 0.4, 0.3, 0.2]
         accuracies = numpy.asarray([
-            chainer.Variable(numpy.asarray(acc, dtype=numpy.float32))
+            torch.from_numpy(numpy.asarray(acc, dtype=numpy.float32))
             for acc in accuracies])
 
         expected = [False, False, False, False, False, False, True, True]
@@ -44,7 +45,7 @@ class TestEarlyStoppingTrigger(unittest.TestCase):
 
         accuracies = [100, 80, 30, 10, 20, 24, 30, 35]
         accuracies = numpy.asarray([
-            chainer.Variable(numpy.asarray(acc, dtype=numpy.float32))
+            torch.from_numpy(numpy.asarray(acc, dtype=numpy.float32))
             for acc in accuracies])
 
         expected = [False, False, False, False, False, False, True, True]
@@ -59,7 +60,7 @@ class TestEarlyStoppingTrigger(unittest.TestCase):
 
         accuracies = [100, 80, 30]
         accuracies = numpy.asarray([
-            chainer.Variable(numpy.asarray(acc, dtype=numpy.float32))
+            torch.from_numpy(numpy.asarray(acc, dtype=numpy.float32))
             for acc in accuracies])
 
         expected = [False, False, True]
@@ -74,7 +75,7 @@ class TestEarlyStoppingTrigger(unittest.TestCase):
 
         accuracies = [100, 80, 30]
         accuracies = numpy.asarray([
-            chainer.Variable(numpy.asarray(acc, dtype=numpy.float32))
+            torch.from_numpy(numpy.asarray(acc, dtype=numpy.float32))
             for acc in accuracies])
 
         expected = [False, False, True]

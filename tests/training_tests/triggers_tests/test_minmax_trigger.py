@@ -3,7 +3,6 @@ import unittest
 
 import torch
 
-from chainer import serializers
 from chainer import testing
 from chainer.training import triggers
 

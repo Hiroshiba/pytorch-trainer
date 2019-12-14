@@ -9,11 +9,8 @@ import torch
 from torch.nn import functional
 
 import chainer
-from chainer.backends import cuda
 from chainer import configuration
-from chainer import functions
 from chainer import testing
-from chainer.testing import attr
 from chainer.testing import backend
 
 
@@ -244,7 +241,7 @@ class TestSummary(unittest.TestCase):
     def test_weight(self):
         self.summary.add(1., 0.5)
         self.summary.add(2., numpy.array(0.4))
-        self.summary.add(3., chainer.Variable(numpy.array(0.3)))
+        self.summary.add(3., torch.from_numpy(numpy.array(0.3)))
 
         mean = self.summary.compute_mean().array
         val = (1 * 0.5 + 2 * 0.4 + 3 * 0.3) / (0.5 + 0.4 + 0.3)
@@ -361,7 +358,7 @@ class TestDictSummary(unittest.TestCase):
     def test_weight(self):
         self.summary.add({'a': (1., 0.5)})
         self.summary.add({'a': (2., numpy.array(0.4))})
-        self.summary.add({'a': (3., chainer.Variable(numpy.array(0.3)))})
+        self.summary.add({'a': (3., torch.from_numpy(numpy.array(0.3)))})
 
         mean = self.summary.compute_mean()
         val = (1 * 0.5 + 2 * 0.4 + 3 * 0.3) / (0.5 + 0.4 + 0.3)
@@ -371,7 +368,7 @@ class TestDictSummary(unittest.TestCase):
             self.summary.add({'a': (4., numpy.array([0.5]))})
 
         with self.assertRaises(ValueError):
-            self.summary.add({'a': (4., chainer.Variable(numpy.array([0.5])))})
+            self.summary.add({'a': (4., torch.from_numpy(numpy.array([0.5])))})
 
     def test_serialize(self):
         self.summary.add({'numpy': numpy.array(3, 'f'), 'int': 1, 'float': 4.})
