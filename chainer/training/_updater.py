@@ -67,6 +67,15 @@ class Updater(object):
         """
         raise NotImplementedError
 
+    def get_all_models(self):
+        """Gets a dictionary of all models for this updater.
+
+        Returns:
+            dict: Dictionary that maps names to models.
+
+        """
+        raise NotImplementedError
+
     def update(self):
         """Updates the parameters of the target model.
 

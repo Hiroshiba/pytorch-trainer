@@ -1,5 +1,7 @@
 import functools
 
+import torch
+
 import chainer
 from chainer import backend
 from chainer.testing import _bundle
@@ -12,18 +14,9 @@ import chainerx
 class BackendConfig(object):
 
     _props = [
-        # ChainerX
-        ('use_chainerx', False),
-        ('chainerx_device', None),
         # CuPy
         ('use_cuda', False),
         ('cuda_device', None),  # 0 by default, if use_cuda=True
-        ('use_cudnn', 'never'),
-        ('cudnn_deterministic', False),
-        ('autotune', False),
-        ('cudnn_fast_batch_normalization', False),
-        # Intel64
-        ('use_ideep', 'never'),
     ]
 
     _device = None
@@ -47,11 +40,7 @@ class BackendConfig(object):
 
     def _check_params(self):
         # Checks consistency of parameters
-
-        if self.use_chainerx:
-            assert isinstance(self.chainerx_device, str), (
-                '\'chainerx_device\' parameter is expected to be a string '
-                'representing a ChainerX device specifier')
+        pass
 
     def _adjust_params(self):
         # Adjusts parameters, e.g. fill the default values
@@ -60,45 +49,14 @@ class BackendConfig(object):
                 self.cuda_device = 0
 
     @property
-    def xp(self):
-        return self.device.xp
-
-    @property
     def device(self):
         if self._device is None:
             if self.use_cuda:
-                device = backend.GpuDevice.from_device_id(self.cuda_device)
-            elif self.use_chainerx:
-                device = backend.ChainerxDevice(
-                    chainerx.get_device(self.chainerx_device))
-            elif self.use_ideep != 'never':
-                device = backend.Intel64Device()
+                device = torch.device('cuda', self.cuda_device)
             else:
-                device = backend.CpuDevice()
+                device = torch.device('cpu')
             self._device = device
         return self._device
-
-    def __enter__(self):
-        contexts = [
-            chainer.using_config(
-                'use_cudnn', self.use_cudnn),
-            chainer.using_config(
-                'cudnn_deterministic', self.cudnn_deterministic),
-            chainer.using_config(
-                'autotune', self.autotune),
-            chainer.using_config(
-                'use_ideep', self.use_ideep),
-            chainer.using_device(self.device),
-        ]
-        for c in contexts:
-            c.__enter__()
-        self._contexts.append(contexts)
-        return self
-
-    def __exit__(self, typ, value, traceback):
-        contexts = self._contexts.pop()
-        for c in reversed(contexts):
-            c.__exit__(typ, value, traceback)
 
     def __repr__(self):
         lst = []
@@ -122,29 +80,16 @@ class BackendConfig(object):
 
     def get_pytest_marks(self):
         marks = []
-        if self.use_chainerx:
-            marks.append(attr.chainerx)
-            backend_name, device_index = self.chainerx_device.split(':')
-            device_index = int(device_index)
-            if backend_name == 'cuda':
-                marks.append(attr.gpu)
-                if device_index >= 1:
-                    marks.append(attr.multi_gpu(device_index + 1))
-        elif self.use_cuda:
+        if self.use_cuda:
             marks.append(attr.gpu)
-            if self.use_cudnn != 'never':
-                marks.append(attr.cudnn)
             if self.cuda_device >= 1:
                 marks.append(attr.multi_gpu(self.cuda_device + 1))
-        else:
-            if self.use_ideep != 'never':
-                marks.append(attr.ideep)
 
         assert all(callable(_) for _ in marks)
         return marks
 
-    def get_array(self, np_array):
-        return self.device.send(np_array)
+    def get_tensor(self, np_array):
+        return torch.from_numpy(np_array)
 
 
 def _test_case_generator(base, method_names, params):

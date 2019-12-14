@@ -1,32 +1,55 @@
 #!/usr/bin/env python
 import argparse
 
+import torch
+from torchvision.transforms import transforms
+
 import chainer
-import chainer.functions as F
-import chainer.links as L
+import torch.nn.functional as F
+import torch.nn as nn
+from torchvision import datasets
 from chainer import training
 from chainer.training import extensions
-import chainerx
+from chainer import reporter
 
 import matplotlib
 matplotlib.use('Agg')
 
 
 # Network definition
-class MLP(chainer.Chain):
+class MLP(nn.Module):
 
-    def __init__(self, n_units, n_out):
+    def __init__(self, n_in, n_units, n_out):
         super(MLP, self).__init__()
-        with self.init_scope():
-            # the size of the inputs to each layer will be inferred
-            self.l1 = L.Linear(None, n_units)  # n_in -> n_units
-            self.l2 = L.Linear(None, n_units)  # n_units -> n_units
-            self.l3 = L.Linear(None, n_out)  # n_units -> n_out
+        self.l1 = nn.Linear(n_in, n_units)  # n_in -> n_units
+        self.l2 = nn.Linear(n_units, n_units)  # n_units -> n_units
+        self.l3 = nn.Linear(n_units, n_out)  # n_units -> n_out
 
     def forward(self, x):
+        x = x.view((len(x), -1))
         h1 = F.relu(self.l1(x))
         h2 = F.relu(self.l2(h1))
-        return self.l3(h2)
+        return F.log_softmax(self.l3(h2), dim=1)
+
+
+def accuracy(y, t):
+    pred = y.argmax(axis=1).reshape(t.shape)
+    acc = (pred == t).mean(dtype=y.dtype)
+    return acc
+
+
+class Classifier(nn.Module):
+    def __init__(self, predictor):
+        super(Classifier, self).__init__()
+        self.predictor = predictor
+
+    def forward(self, x, t):
+        y = self.predictor(x)
+        loss = F.nll_loss(y, t)
+        reporter.report({'loss': loss}, self)
+        acc = accuracy(y, t)
+        reporter.report({'accuracy': acc}, self)
+        return loss
 
 
 def main():
@@ -57,10 +80,9 @@ def main():
                        help='GPU ID (negative value indicates CPU)')
     args = parser.parse_args()
 
-    device = chainer.get_device(args.device)
+    device = torch.device(args.device)
 
     print('Device: {}'.format(device))
-    print('# unit: {}'.format(args.unit))
     print('# Minibatch-size: {}'.format(args.batchsize))
     print('# epoch: {}'.format(args.epoch))
     print('')
@@ -68,16 +90,16 @@ def main():
     # Set up a neural network to train
     # Classifier reports softmax cross entropy loss and accuracy at every
     # iteration, which will be used by the PrintReport extension below.
-    model = L.Classifier(MLP(args.unit, 10))
-    model.to_device(device)
-    device.use()
+    model = Classifier(MLP(784, args.unit, 10))
+    model.to(device)
 
     # Setup an optimizer
-    optimizer = chainer.optimizers.Adam()
-    optimizer.setup(model)
+    optimizer = torch.optim.Adam(model.parameters())
 
     # Load the MNIST dataset
-    train, test = chainer.datasets.get_mnist()
+    transform = transforms.ToTensor()
+    train = datasets.MNIST('data', train=True, download=True, transform=transform)
+    test = datasets.MNIST('data', train=False, transform=transform)
 
     train_iter = chainer.iterators.SerialIterator(train, args.batchsize)
     test_iter = chainer.iterators.SerialIterator(test, args.batchsize,
@@ -85,7 +107,7 @@ def main():
 
     # Set up a trainer
     updater = training.updaters.StandardUpdater(
-        train_iter, optimizer, device=device)
+        train_iter, optimizer, model, device=device)
     trainer = training.Trainer(updater, (args.epoch, 'epoch'), out=args.out)
 
     # Evaluate the model with the test dataset for each epoch
@@ -94,9 +116,7 @@ def main():
 
     # Dump a computational graph from 'loss' variable at the first iteration
     # The "main" refers to the target link of the "main" optimizer.
-    # TODO(niboshi): Temporarily disabled for chainerx. Fix it.
-    if device.xp is not chainerx:
-        trainer.extend(extensions.DumpGraph('main/loss'))
+    # trainer.extend(extensions.DumpGraph('main/loss'))
 
     # Take a snapshot for each specified epoch
     frequency = args.epoch if args.frequency == -1 else max(1, args.frequency)
@@ -137,7 +157,7 @@ def main():
         # Resume from a snapshot (Note: this loaded model is to be
         # overwritten by --autoload option, autoloading snapshots, if
         # any snapshots exist in output directory)
-        chainer.serializers.load_npz(args.resume, trainer)
+        trainer.load_state_dict(torch.load(args.resume))
 
     # Run the training
     trainer.run()

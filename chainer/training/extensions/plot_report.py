@@ -6,7 +6,6 @@ import numpy
 import six
 
 from chainer import reporter
-from chainer import serializer as serializer_module
 from chainer.training import extension
 from chainer.training import trigger as trigger_module
 from chainer.utils import argument
@@ -190,14 +189,14 @@ filename='plot.png', marker='x', grid=True)
             plt.close()
             self._init_summary()
 
-    def serialize(self, serializer):
-        if isinstance(serializer, serializer_module.Serializer):
-            serializer('_plot_{}'.format(self._file_name),
-                       json.dumps(self._data))
+    def state_dict(self):
+        return {
+            '_plot_{}'.format(self._file_name): json.dumps(self._data)
+        }
 
-        else:
-            self._data = json.loads(
-                serializer('_plot_{}'.format(self._file_name), ''))
+    def load_state_dict(self, state_dict):
+        self._data = json.loads(
+            state_dict['_plot_{}'.format(self._file_name)])
 
     def _init_summary(self):
         self._summary = reporter.DictSummary()

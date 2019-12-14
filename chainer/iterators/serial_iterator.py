@@ -8,7 +8,6 @@ from chainer.iterators.order_samplers import ShuffleOrderSampler
 
 
 class SerialIterator(iterator.Iterator):
-
     """Dataset iterator that serially reads the examples.
 
     This is a simple implementation of :class:`~chainer.dataset.Iterator`
@@ -102,22 +101,36 @@ class SerialIterator(iterator.Iterator):
             return None
         return self._previous_epoch_detail
 
-    def serialize(self, serializer):
-        current_position = serializer('current_position',
-                                      self.current_position)
-        epoch = serializer('epoch', self.epoch)
-        is_new_epoch = serializer('is_new_epoch', self.is_new_epoch)
+    def state_dict(self):
+        state_dict = {
+            'current_position': self.current_position,
+            'epoch': self.epoch,
+            'is_new_epoch': self.is_new_epoch,
+        }
+
         order = self._state.order
         if order is not None:
-            try:
-                serializer('order', order)
-            except KeyError:
-                serializer('_order', order)
+            state_dict['order'] = order
+
+        try:
+            state_dict['previous_epoch_detail'] = self._previous_epoch_detail
+        except KeyError:
+            pass
+
+        return state_dict
+
+    def load_state_dict(self, state_dict):
+        current_position = state_dict['current_position']
+        epoch = state_dict['epoch']
+        is_new_epoch = state_dict['is_new_epoch']
+        order = self._state.order
+        if order is not None:
+            order = state_dict['order']
         self._state = _statemachine.IteratorState(
             current_position, epoch, is_new_epoch, order)
+
         try:
-            self._previous_epoch_detail = serializer(
-                'previous_epoch_detail', self._previous_epoch_detail)
+            self._previous_epoch_detail = state_dict['previous_epoch_detail']
         except KeyError:
             # guess previous_epoch_detail for older version
             self._previous_epoch_detail = self.epoch + \

@@ -1,3 +1,5 @@
+import torch
+
 from chainer.training import extension
 
 
@@ -12,12 +14,10 @@ class FailOnNonNumber(extension.Extension):
     """
 
     def __call__(self, trainer):
-        optimizers = trainer.updater.get_all_optimizers()
-        for name, optimizer in optimizers.items():
-            target = optimizer.target
-            xp = target.xp
-            for param in target.params():
-                if not xp.isfinite(param.array).all():
+        models = trainer.updater.get_all_models()
+        for name, target in models.items():
+            for param in target.parameters():
+                if not torch.isfinite(param).all():
                     raise RuntimeError(
                         'Kill the process since parameters in optimizer'
                         ' \'{}\' diverge. R.I.P.'.format(name))

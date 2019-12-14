@@ -181,7 +181,7 @@ class FunctionTestBase(object):
         cpu_expected = self._forward_expected(cpu_inputs)
 
         # Compute actual outputs
-        inputs = backend_config.get_array(cpu_inputs)
+        inputs = backend_config.get_tensor(cpu_inputs)
         inputs = self._to_noncontiguous_as_needed(inputs)
         outputs = self._forward(
             tuple([
@@ -242,8 +242,8 @@ class FunctionTestBase(object):
             outputs = self._forward_expected(inputs)
             grad_outputs = self._generate_grad_outputs(outputs)
 
-            inputs = backend_config.get_array(inputs)
-            grad_outputs = backend_config.get_array(grad_outputs)
+            inputs = backend_config.get_tensor(inputs)
+            grad_outputs = backend_config.get_tensor(grad_outputs)
             inputs = self._to_noncontiguous_as_needed(inputs)
             grad_outputs = self._to_noncontiguous_as_needed(grad_outputs)
 
@@ -295,9 +295,9 @@ class FunctionTestBase(object):
                 ggx for ggx in grad_grad_inputs
                 if (ggx is None or ggx.dtype.kind == 'f')]
 
-            inputs = backend_config.get_array(inputs)
-            grad_outputs = backend_config.get_array(grad_outputs)
-            grad_grad_inputs = backend_config.get_array(grad_grad_inputs)
+            inputs = backend_config.get_tensor(inputs)
+            grad_outputs = backend_config.get_tensor(grad_outputs)
+            grad_grad_inputs = backend_config.get_tensor(grad_grad_inputs)
             inputs = self._to_noncontiguous_as_needed(inputs)
             grad_outputs = self._to_noncontiguous_as_needed(grad_outputs)
             grad_grad_inputs = (
@@ -544,7 +544,7 @@ class _LinkTestBase(object):
         # Generate inputs and compute a forward pass to initialize the
         # parameters.
         inputs_np = self._generate_inputs()
-        inputs_xp = backend_config.get_array(inputs_np)
+        inputs_xp = backend_config.get_tensor(inputs_np)
         inputs_xp = self._to_noncontiguous_as_needed(inputs_xp)
         input_vars = [chainer.Variable(i) for i in inputs_xp]
         output_vars = self._forward(link, input_vars, backend_config)
@@ -778,7 +778,7 @@ class LinkTestCase(_LinkTestBase, unittest.TestCase):
         link = self._create_link(inits, backend_config)
 
         inputs_np = self._generate_inputs()
-        inputs_xp = backend_config.get_array(inputs_np)
+        inputs_xp = backend_config.get_tensor(inputs_np)
         inputs_xp = self._to_noncontiguous_as_needed(inputs_xp)
         input_vars = tuple([chainer.Variable(i) for i in inputs_xp])
         # Compute forward of the link and initialize its parameters.
@@ -824,7 +824,7 @@ class LinkTestCase(_LinkTestBase, unittest.TestCase):
             cpu_device = backend.CpuDevice()
             outputs = [cpu_device.send(output) for output in outputs]
             grad_outputs = self._generate_grad_outputs(outputs)
-            grad_outputs = backend_config.get_array(grad_outputs)
+            grad_outputs = backend_config.get_tensor(grad_outputs)
 
             inputs = self._to_noncontiguous_as_needed(inputs)
             params = self._to_noncontiguous_as_needed(params)

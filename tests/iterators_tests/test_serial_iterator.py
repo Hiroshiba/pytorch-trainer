@@ -1,10 +1,11 @@
 from __future__ import division
+
+import copy
 import unittest
 
 import numpy
 
 from chainer import iterators
-from chainer import serializers
 from chainer import testing
 
 
@@ -212,9 +213,9 @@ class TestSerialIteratorShuffled(unittest.TestCase):
     {'order_sampler': lambda order, _: numpy.random.permutation(len(order)),
      'shuffle': None}
 )
-class TestSerialIteratorSerialize(unittest.TestCase):
+class TestSerialIteratorStateDict(unittest.TestCase):
 
-    def test_iterator_serialize(self):
+    def test_iterator_state_dict(self):
         dataset = [1, 2, 3, 4, 5, 6]
         it = iterators.SerialIterator(dataset, 2, shuffle=self.shuffle,
                                       order_sampler=self.order_sampler)
@@ -235,11 +236,10 @@ class TestSerialIteratorSerialize(unittest.TestCase):
         self.assertAlmostEqual(it.epoch_detail, 4 / 6)
         self.assertAlmostEqual(it.previous_epoch_detail, 2 / 6)
 
-        target = dict()
-        it.serialize(serializers.DictionarySerializer(target))
+        state_dict = copy.deepcopy(it.state_dict())
 
         it = iterators.SerialIterator(dataset, 2)
-        it.serialize(serializers.NpzDeserializer(target))
+        it.load_state_dict(state_dict)
         self.assertFalse(it.is_new_epoch)
         self.assertAlmostEqual(it.epoch_detail, 4 / 6)
         self.assertAlmostEqual(it.previous_epoch_detail, 2 / 6)
@@ -252,7 +252,7 @@ class TestSerialIteratorSerialize(unittest.TestCase):
         self.assertAlmostEqual(it.epoch_detail, 6 / 6)
         self.assertAlmostEqual(it.previous_epoch_detail, 4 / 6)
 
-    def test_iterator_serialize_backward_compat(self):
+    def test_iterator_state_dict_backward_compat(self):
         dataset = [1, 2, 3, 4, 5, 6]
         it = iterators.SerialIterator(dataset, 2, shuffle=self.shuffle,
                                       order_sampler=self.order_sampler)
@@ -273,16 +273,10 @@ class TestSerialIteratorSerialize(unittest.TestCase):
         self.assertAlmostEqual(it.epoch_detail, 4 / 6)
         self.assertAlmostEqual(it.previous_epoch_detail, 2 / 6)
 
-        target = dict()
-        it.serialize(serializers.DictionarySerializer(target))
-        # older version uses '_order'
-        target['_order'] = target['order']
-        del target['order']
-        # older version does not have previous_epoch_detail
-        del target['previous_epoch_detail']
+        state_dict = copy.deepcopy(it.state_dict())
 
         it = iterators.SerialIterator(dataset, 2)
-        it.serialize(serializers.NpzDeserializer(target))
+        it.load_state_dict(state_dict)
         self.assertFalse(it.is_new_epoch)
         self.assertAlmostEqual(it.epoch_detail, 4 / 6)
         self.assertAlmostEqual(it.previous_epoch_detail, 2 / 6)
@@ -301,6 +295,7 @@ class TestSerialIteratorOrderSamplerEpochSize(unittest.TestCase):
     def setUp(self):
         def order_sampler(order, cur_pos):
             return numpy.repeat(numpy.arange(3), 2)
+
         self.options = {'order_sampler': order_sampler}
 
     def test_iterator_repeat(self):

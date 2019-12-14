@@ -5,6 +5,8 @@ import unittest
 import warnings
 
 import numpy
+import torch
+from torch import nn
 
 import chainer
 from chainer import links
@@ -13,15 +15,15 @@ from chainer.testing import attr
 from chainer import training
 
 
-class Model(chainer.Chain):
+class Model(nn.Module):
 
     def __init__(self):
         super(Model, self).__init__()
-        with self.init_scope():
-            self.l = links.Linear(1, 3)
+        self.l = nn.Linear(1, 3)
+        self.double()
 
     def forward(self, x):
-        return self.l(x)
+        return self.l(x).mean()
 
 
 class Dataset(chainer.dataset.DatasetMixin):
@@ -33,7 +35,7 @@ class Dataset(chainer.dataset.DatasetMixin):
         return len(self.values)
 
     def get_example(self, i):
-        return numpy.array([self.values[i]], numpy.float32), numpy.int32(i % 2)
+        return torch.DoubleTensor([self.values[i]])
 
 
 class TestFailOnNonNumber(unittest.TestCase):
@@ -43,9 +45,7 @@ class TestFailOnNonNumber(unittest.TestCase):
         self.n_epochs = 3
 
         self.model = Model()
-        self.classifier = links.Classifier(self.model)
-        self.optimizer = chainer.optimizers.Adam()
-        self.optimizer.setup(self.classifier)
+        self.optimizer = torch.optim.Adam(self.model.parameters())
 
         self.dataset = Dataset([i for i in range(self.n_data)])
         self.iterator = chainer.iterators.SerialIterator(
@@ -58,7 +58,7 @@ class TestFailOnNonNumber(unittest.TestCase):
     def prepare(self, dirname='test', device=None):
         outdir = os.path.join(self.temp_dir, dirname)
         self.updater = training.updaters.StandardUpdater(
-            self.iterator, self.optimizer, device=device)
+            self.iterator, self.optimizer, self.model, device=device)
         self.trainer = training.Trainer(
             self.updater, (self.n_epochs, 'epoch'), out=outdir)
         self.trainer.extend(training.extensions.FailOnNonNumber())
@@ -69,13 +69,13 @@ class TestFailOnNonNumber(unittest.TestCase):
 
     def test_nan(self):
         self.prepare(dirname='test_nan')
-        self.model.l.W.array[1, 0] = numpy.nan
+        self.model.l.weight[1, 0] = numpy.nan
         with self.assertRaises(RuntimeError):
             self.trainer.run(show_loop_exception_msg=False)
 
     def test_inf(self):
         self.prepare(dirname='test_inf')
-        self.model.l.W.array[2, 0] = numpy.inf
+        self.model.l.weight[2, 0] = numpy.inf
         # Ignore RuntimeWarning when using Adam on CPU
         with warnings.catch_warnings(), self.assertRaises(RuntimeError):
             warnings.filterwarnings('ignore', category=RuntimeWarning)

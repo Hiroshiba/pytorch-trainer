@@ -70,10 +70,17 @@ class PrintReport(extension.Extension):
             log_len += 1
         self._log_len = log_len
 
-    def serialize(self, serializer):
+    def state_dict(self):
+        state_dict = {}
         log_report = self._log_report
         if isinstance(log_report, log_report_module.LogReport):
-            log_report.serialize(serializer['_log_report'])
+            state_dict['_log_report'] = log_report.state_dict()
+        return state_dict
+
+    def load_state_dict(self, state_dict):
+        log_report = self._log_report
+        if isinstance(log_report, log_report_module.LogReport):
+            log_report.load_state_dict(state_dict['_log_report'])
 
     def _print(self, observation):
         out = self._out

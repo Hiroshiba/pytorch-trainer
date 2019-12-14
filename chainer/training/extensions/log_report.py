@@ -6,7 +6,6 @@ import warnings
 import six
 
 from chainer import reporter
-from chainer import serializer as serializer_module
 from chainer.training import extension
 from chainer.training import trigger as trigger_module
 from chainer import utils
@@ -125,23 +124,34 @@ keys=None, trigger=(1, 'epoch'), postprocess=None, filename='log')
         """The current list of observation dictionaries."""
         return self._log
 
-    def serialize(self, serializer):
-        if hasattr(self._trigger, 'serialize'):
-            self._trigger.serialize(serializer['_trigger'])
+    def state_dict(self):
+        state_dict = {}
+        if hasattr(self._trigger, 'state_dict'):
+            state_dict['_trigger'] = self._trigger.state_dict()
 
         try:
-            self._summary.serialize(serializer['_summary'])
+            state_dict['_summary'] = self._summary.state_dict()
         except KeyError:
             warnings.warn('The statistics are not saved.')
 
         # Note that this serialization may lose some information of small
         # numerical differences.
-        if isinstance(serializer, serializer_module.Serializer):
-            log = json.dumps(self._log)
-            serializer('_log', log)
-        else:
-            log = serializer('_log', '')
-            self._log = json.loads(log)
+        log = json.dumps(self._log)
+        state_dict['_log'] = log
+
+        return state_dict
+
+    def load_state_dict(self, state_dict):
+        if hasattr(self._trigger, 'load_state_dict'):
+            self._trigger.load_state_dict(state_dict['_trigger'])
+
+        try:
+            self._summary.load_state_dict(state_dict['_summary'])
+        except KeyError:
+            warnings.warn('The statistics are not saved.')
+
+        log = state_dict['_log']
+        self._log = json.loads(log)
 
     def _init_summary(self):
         self._summary = reporter.DictSummary()

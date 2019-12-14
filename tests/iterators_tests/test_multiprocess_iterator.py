@@ -16,7 +16,6 @@ import numpy
 import six
 
 from chainer import iterators
-from chainer import serializers
 from chainer import testing
 from chainer.testing import attr
 
@@ -416,7 +415,7 @@ class TestMultiprocessIteratorPickle(unittest.TestCase):
     'order_sampler': [
         None, lambda order, _: numpy.random.permutation(len(order))],
 }))
-class TestMultiprocessIteratorSerialize(unittest.TestCase):
+class TestMultiprocessIteratorStateDict(unittest.TestCase):
 
     def setUp(self):
         self.n_processes = 2
@@ -427,7 +426,7 @@ class TestMultiprocessIteratorSerialize(unittest.TestCase):
             self.options.update(
                 {'shuffle': None, 'order_sampler': self.order_sampler})
 
-    def test_iterator_serialize(self):
+    def test_iterator_state_dict(self):
         dataset = [1, 2, 3, 4, 5, 6]
         it = iterators.MultiprocessIterator(dataset, 2, **self.options)
 
@@ -447,11 +446,10 @@ class TestMultiprocessIteratorSerialize(unittest.TestCase):
         self.assertAlmostEqual(it.epoch_detail, 4 / 6)
         self.assertAlmostEqual(it.previous_epoch_detail, 2 / 6)
 
-        target = dict()
-        it.serialize(serializers.DictionarySerializer(target))
+        state_dict = copy.deepcopy(it.state_dict())
 
         it = iterators.MultiprocessIterator(dataset, 2, **self.options)
-        it.serialize(serializers.NpzDeserializer(target))
+        it.load_state_dict(state_dict)
         self.assertFalse(it.is_new_epoch)
         self.assertAlmostEqual(it.epoch_detail, 4 / 6)
         self.assertAlmostEqual(it.previous_epoch_detail, 2 / 6)
@@ -464,7 +462,7 @@ class TestMultiprocessIteratorSerialize(unittest.TestCase):
         self.assertAlmostEqual(it.epoch_detail, 6 / 6)
         self.assertAlmostEqual(it.previous_epoch_detail, 4 / 6)
 
-    def test_iterator_serialize_backward_compat(self):
+    def test_iterator_state_dict_backward_compat(self):
         dataset = [1, 2, 3, 4, 5, 6]
         it = iterators.MultiprocessIterator(dataset, 2, **self.options)
 
@@ -484,13 +482,10 @@ class TestMultiprocessIteratorSerialize(unittest.TestCase):
         self.assertAlmostEqual(it.epoch_detail, 4 / 6)
         self.assertAlmostEqual(it.previous_epoch_detail, 2 / 6)
 
-        target = dict()
-        it.serialize(serializers.DictionarySerializer(target))
-        # older version does not have previous_epoch_detail
-        del target['previous_epoch_detail']
+        state_dict = copy.deepcopy(it.state_dict())
 
         it = iterators.MultiprocessIterator(dataset, 2, **self.options)
-        it.serialize(serializers.NpzDeserializer(target))
+        it.load_state_dict(state_dict)
         self.assertFalse(it.is_new_epoch)
         self.assertAlmostEqual(it.epoch_detail, 4 / 6)
         self.assertAlmostEqual(it.previous_epoch_detail, 2 / 6)

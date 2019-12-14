@@ -213,20 +213,36 @@ class MultiprocessIterator(iterator.Iterator):
             return None
         return self._previous_epoch_detail
 
-    def serialize(self, serializer):
-        current_position = serializer('current_position',
-                                      self.current_position)
-        epoch = serializer('epoch', self.epoch)
-        is_new_epoch = serializer('is_new_epoch', self.is_new_epoch)
+
+    def state_dict(self):
+        state_dict = {
+            'current_position': self.current_position,
+            'epoch': self.epoch,
+            'is_new_epoch': self.is_new_epoch,
+        }
+
         order = self._state.order.copy()
+        state_dict['order'] = order
+
         try:
-            serializer('order', order)
+            state_dict['previous_epoch_detail'] = self._previous_epoch_detail
         except KeyError:
-            serializer('_order', order)
-        self._reset_state(current_position, epoch, is_new_epoch, order)
+            pass
+
+        return state_dict
+
+    def load_state_dict(self, state_dict):
+        current_position = state_dict['current_position']
+        epoch = state_dict['epoch']
+        is_new_epoch = state_dict['is_new_epoch']
+        order = self._state.order
+        if order is not None:
+            order = state_dict['order']
+        self._reset_state(
+            current_position, epoch, is_new_epoch, order)
+
         try:
-            self._previous_epoch_detail = serializer(
-                'previous_epoch_detail', self._previous_epoch_detail)
+            self._previous_epoch_detail = state_dict['previous_epoch_detail']
         except KeyError:
             # guess previous_epoch_detail for older version
             self._previous_epoch_detail = self.epoch + \
@@ -267,8 +283,7 @@ class MultiprocessIterator(iterator.Iterator):
         # We trick the serializer to fill a dict for us
         # this allows us to use the same code for both
         # chainer and pickle serializers
-        state = {}
-        self.serialize(lambda k, v: state.__setitem__(k, v))
+        state = self.state_dict()
         self._reset_state(self.current_position, self.epoch,
                           self.is_new_epoch, state['order'])
 

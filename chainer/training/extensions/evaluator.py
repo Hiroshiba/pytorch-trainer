@@ -3,14 +3,12 @@ import datetime
 import warnings
 
 import six
+import torch
+from torch.nn.modules import module
 
-from chainer import backend
-from chainer import configuration
 from chainer.dataset import convert
 from chainer.dataset import iterator as iterator_module
-from chainer import function
 from chainer import iterators
-from chainer import link
 from chainer import reporter as reporter_module
 from chainer.training import extension
 from chainer.training.extensions import util
@@ -97,13 +95,13 @@ device=None, eval_hook=None, eval_func=None, *, progress_bar=False)
         progress_bar, = argument.parse_kwargs(kwargs, ('progress_bar', False))
 
         if device is not None:
-            device = backend.get_device(device)
+            device = torch.device(device)
 
         if isinstance(iterator, iterator_module.Iterator):
             iterator = {'main': iterator}
         self._iterators = iterator
 
-        if isinstance(target, link.Link):
+        if isinstance(target, module.Module):
             target = {'main': target}
         self._targets = target
 
@@ -173,11 +171,11 @@ device=None, eval_hook=None, eval_func=None, *, progress_bar=False)
         for name, target in six.iteritems(self._targets):
             reporter.add_observer(prefix + name, target)
             reporter.add_observers(prefix + name,
-                                   target.namedlinks(skipself=True))
+                                   target.named_children())
 
         with reporter:
-            with configuration.using_config('train', False):
-                result = self.evaluate()
+            self._targets['main'].eval()
+            result = self.evaluate()
 
         reporter_module.report(result)
         return result
@@ -236,13 +234,12 @@ device=None, eval_hook=None, eval_func=None, *, progress_bar=False)
             with reporter_module.report_scope(observation):
                 in_arrays = convert._call_converter(
                     self.converter, batch, self.device)
-                with function.no_backprop_mode():
-                    if isinstance(in_arrays, tuple):
-                        eval_func(*in_arrays)
-                    elif isinstance(in_arrays, dict):
-                        eval_func(**in_arrays)
-                    else:
-                        eval_func(in_arrays)
+                if isinstance(in_arrays, tuple):
+                    eval_func(*in_arrays)
+                elif isinstance(in_arrays, dict):
+                    eval_func(**in_arrays)
+                else:
+                    eval_func(in_arrays)
 
             summary.add(observation)
 

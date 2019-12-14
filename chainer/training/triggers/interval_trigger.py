@@ -83,10 +83,15 @@ class IntervalTrigger(object):
 
         return fire
 
-    def serialize(self, serializer):
+    def state_dict(self):
+        return {
+            'previous_iteration': self._previous_iteration,
+            'previous_epoch_detail': self._previous_epoch_detail
+        }
+
+    def load_state_dict(self, state_dict):
         try:
-            self._previous_iteration = serializer(
-                'previous_iteration', self._previous_iteration)
+            self._previous_iteration = state_dict['previous_iteration']
         except KeyError:
             warnings.warn(
                 'The previous value of iteration is not saved. '
@@ -97,8 +102,7 @@ class IntervalTrigger(object):
             self._previous_iteration = -1
 
         try:
-            self._previous_epoch_detail = serializer(
-                'previous_epoch_detail', self._previous_epoch_detail)
+            self._previous_epoch_detail = state_dict['previous_epoch_detail']
         except KeyError:
             warnings.warn(
                 'The previous value of epoch_detail is not saved. '

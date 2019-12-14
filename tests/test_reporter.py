@@ -5,6 +5,8 @@ import time
 import unittest
 
 import numpy
+import torch
+from torch.nn import functional
 
 import chainer
 from chainer.backends import cuda
@@ -128,28 +130,28 @@ class TestKeepGraphOnReportFlag(unittest.TestCase):
             configuration.config.keep_graph_on_report = old
 
     def test_keep_graph_default(self):
-        x = chainer.Variable(numpy.array([1], numpy.float32))
-        y = functions.sigmoid(x)
+        x = torch.from_numpy(numpy.array([1], numpy.float32)).requires_grad_(True)
+        y = functional.sigmoid(x)
         reporter = chainer.Reporter()
         with self._scope(None):
             reporter.report({'y': y})
-        self.assertIsNone(reporter.observation['y'].creator)
+        self.assertFalse(reporter.observation['y'].requires_grad)
 
     def test_keep_graph(self):
-        x = chainer.Variable(numpy.array([1], numpy.float32))
-        y = functions.sigmoid(x)
+        x = torch.from_numpy(numpy.array([1], numpy.float32)).requires_grad_(True)
+        y = functional.sigmoid(x)
         reporter = chainer.Reporter()
         with self._scope(True):
             reporter.report({'y': y})
-        assert reporter.observation['y'].creator is not None
+        self.assertTrue(reporter.observation['y'].requires_grad)
 
     def test_not_keep_graph(self):
-        x = chainer.Variable(numpy.array([1], numpy.float32))
-        y = functions.sigmoid(x)
+        x = torch.from_numpy(numpy.array([1], numpy.float32)).requires_grad_(True)
+        y = functional.sigmoid(x)
         reporter = chainer.Reporter()
         with self._scope(False):
             reporter.report({'y': y})
-        self.assertIsNone(reporter.observation['y'].creator)
+        self.assertFalse(reporter.observation['y'].requires_grad)
 
 
 class TestReport(unittest.TestCase):
@@ -205,8 +207,8 @@ class TestSummary(unittest.TestCase):
         self.summary = chainer.reporter.Summary()
 
     def test_basic(self, backend_config):
-        self.summary.add(backend_config.get_array(numpy.array(1, 'f')))
-        self.summary.add(backend_config.get_array(numpy.array(-2, 'f')))
+        self.summary.add(backend_config.get_tensor(numpy.array(1, 'f')))
+        self.summary.add(backend_config.get_tensor(numpy.array(-2, 'f')))
 
         mean = self.summary.compute_mean()
         testing.assert_allclose(mean, numpy.array(-0.5, 'f'))
@@ -254,7 +256,7 @@ class TestSummary(unittest.TestCase):
         self.summary.add(value2)
 
         summary = chainer.reporter.Summary()
-        testing.save_and_load_npz(self.summary, summary)
+        testing.save_and_load_pth(self.summary, summary)
         summary.add(value3)
 
         expected_mean = (value1 + value2 + value3) / 3.
@@ -270,16 +272,16 @@ class TestSummary(unittest.TestCase):
 
     def test_serialize_array_float(self, backend_config):
         self.check_serialize(
-            backend_config.get_array(numpy.array(1.5, numpy.float32)),
-            backend_config.get_array(numpy.array(2.0, numpy.float32)),
+            backend_config.get_tensor(numpy.array(1.5, numpy.float32)),
+            backend_config.get_tensor(numpy.array(2.0, numpy.float32)),
             # sum of the above two is non-integer
-            backend_config.get_array(numpy.array(3.5, numpy.float32)))
+            backend_config.get_tensor(numpy.array(3.5, numpy.float32)))
 
     def test_serialize_array_int(self, backend_config):
         self.check_serialize(
-            backend_config.get_array(numpy.array(1, numpy.int32)),
-            backend_config.get_array(numpy.array(-2, numpy.int32)),
-            backend_config.get_array(numpy.array(2, numpy.int32)))
+            backend_config.get_tensor(numpy.array(1, numpy.int32)),
+            backend_config.get_tensor(numpy.array(-2, numpy.int32)),
+            backend_config.get_tensor(numpy.array(2, numpy.int32)))
 
     def test_serialize_scalar_float(self):
         self.check_serialize(
@@ -293,9 +295,9 @@ class TestSummary(unittest.TestCase):
     def test_serialize_backward_compat(self):
         with tempfile.NamedTemporaryFile(delete=False) as f:
             # old version does not save anything
-            numpy.savez(f, dummy=0)
+            torch.save(dict(dummy=0), f.name)
             with testing.assert_warns(UserWarning):
-                chainer.serializers.load_npz(f.name, self.summary)
+                self.summary.load_state_dict(torch.load(f.name))
 
         self.summary.add(2.)
         self.summary.add(3.)
@@ -377,7 +379,7 @@ class TestDictSummary(unittest.TestCase):
         self.summary.add({'numpy': numpy.array(2, 'f'), 'int': 6, 'float': 5.})
 
         summary = chainer.reporter.DictSummary()
-        testing.save_and_load_npz(self.summary, summary)
+        testing.save_and_load_pth(self.summary, summary)
         summary.add({'numpy': numpy.array(3, 'f'), 'int': 5, 'float': 8.})
 
         self.check(summary, {
@@ -392,7 +394,7 @@ class TestDictSummary(unittest.TestCase):
         self.summary.add({'a/b': 2., '/a/b': 6., 'a/b/': 5.})
 
         summary = chainer.reporter.DictSummary()
-        testing.save_and_load_npz(self.summary, summary)
+        testing.save_and_load_pth(self.summary, summary)
         summary.add({'a/b': 3., '/a/b': 5., 'a/b/': 8.})
 
         self.check(summary, {
@@ -407,7 +409,7 @@ class TestDictSummary(unittest.TestCase):
 
         summary = chainer.reporter.DictSummary()
         summary.add({'c': 5.})
-        testing.save_and_load_npz(self.summary, summary)
+        testing.save_and_load_pth(self.summary, summary)
 
         self.check(summary, {
             'a': (3., 1.),
@@ -419,10 +421,10 @@ class TestDictSummary(unittest.TestCase):
         self.summary.add({'a': 1., 'b': 5.})
 
         with tempfile.NamedTemporaryFile(delete=False) as f:
-            chainer.serializers.save_npz(f.name, self.summary)
+            torch.save(self.summary.state_dict(), f.name)
             self.summary.add({'a': 2., 'b': 6., 'c': 5.})
             self.summary.add({'a': 3., 'b': 4., 'c': 6.})
-            chainer.serializers.load_npz(f.name, self.summary)
+            self.summary.load_state_dict(torch.load(f.name))
 
         self.summary.add({'a': 3., 'b': 5., 'c': 8.})
 
@@ -435,9 +437,9 @@ class TestDictSummary(unittest.TestCase):
     def test_serialize_backward_compat(self):
         with tempfile.NamedTemporaryFile(delete=False) as f:
             # old version does not save anything
-            numpy.savez(f, dummy=0)
+            torch.save(dict(dummy=0), f.name)
             with testing.assert_warns(UserWarning):
-                chainer.serializers.load_npz(f.name, self.summary)
+                self.summary.load_state_dict(torch.load(f.name))
 
     def test_serialize_backward_compat_overwrite(self):
         self.summary.add({'a': 3., 'b': 1., 'c': 4.})
@@ -445,9 +447,9 @@ class TestDictSummary(unittest.TestCase):
 
         with tempfile.NamedTemporaryFile(delete=False) as f:
             # old version does not save anything
-            numpy.savez(f, dummy=0)
+            torch.save(dict(dummy=0), f.name)
             with testing.assert_warns(UserWarning):
-                chainer.serializers.load_npz(f.name, self.summary)
+                self.summary.load_state_dict(torch.load(f.name))
 
         self.summary.add({'a': 9., 'b': 2.})
         self.summary.add({'a': 6., 'b': 5.})

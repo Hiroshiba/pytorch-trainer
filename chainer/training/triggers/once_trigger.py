@@ -34,9 +34,14 @@ class OnceTrigger(object):
         self._flag_first = False
         return fire
 
-    def serialize(self, serializer):
+    def state_dict(self):
+        return {
+            '_flag_first': self._flag_first
+        }
+
+    def load_state_dict(self, state_dict):
         try:
-            self._flag_first = serializer('_flag_first', self._flag_first)
+            self._flag_first = state_dict['_flag_first']
         except KeyError:
             warnings.warn(
                 'The flag is not saved.'

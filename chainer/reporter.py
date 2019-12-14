@@ -9,21 +9,19 @@ import warnings
 
 import numpy
 import six
+import torch
 
-import chainer
-from chainer import backend
 from chainer import configuration
-from chainer import serializer as serializer_module
 from chainer import variable
-import chainerx
 
 
 _thread_local = threading.local()
 
 
-def _copy_variable(value):
-    if isinstance(value, variable.Variable):
-        return copy.copy(value)
+def _copy_tensor(value):
+    if isinstance(value, torch.Tensor):
+        value = copy.copy(value)
+        value.requires_grad = False
     return value
 
 
@@ -160,7 +158,7 @@ class Reporter(object):
 
         """
         if not configuration.config.keep_graph_on_report:
-            values = {k: _copy_variable(v) for k, v in six.iteritems(values)}
+            values = {k: _copy_tensor(v) for k, v in six.iteritems(values)}
 
         if observer is not None:
             observer_id = id(observer)
@@ -285,21 +283,14 @@ class Summary(object):
                 Default is 1 (integer).
 
         """
-        if isinstance(value, chainerx.ndarray):
-            # ChainerX arrays does not support inplace assignment if it's
-            # connected to the backprop graph.
-            value = value.as_grad_stopped()
-
-        with chainer.using_device(backend.get_device_from_array(value)):
-            self._x += weight * value
-            self._x2 += weight * value * value
-            self._n += weight
+        self._x += weight * value
+        self._x2 += weight * value * value
+        self._n += weight
 
     def compute_mean(self):
         """Computes the mean."""
         x, n = self._x, self._n
-        with chainer.using_device(backend.get_device_from_array(x)):
-            return x / n
+        return x / n
 
     def make_statistics(self):
         """Computes and returns the mean and standard deviation values.
@@ -309,18 +300,23 @@ class Summary(object):
 
         """
         x, n = self._x, self._n
-        xp = backend.get_array_module(x)
-        with chainer.using_device(backend.get_device_from_array(x)):
-            mean = x / n
-            var = self._x2 / n - mean * mean
-            std = xp.sqrt(var)
-            return mean, std
+        mean = x / n
+        var = self._x2 / n - mean * mean
+        std = torch.as_tensor(var).sqrt()
+        return mean, std
 
-    def serialize(self, serializer):
+    def state_dict(self):
+        return {
+            '_x': self._x,
+            '_x2': self._x2,
+            '_n': self._n
+        }
+
+    def load_state_dict(self, state_dict):
         try:
-            self._x = serializer('_x', self._x)
-            self._x2 = serializer('_x2', self._x2)
-            self._n = serializer('_n', self._n)
+            self._x = state_dict['_x']
+            self._x2 = state_dict['_x2']
+            self._n = state_dict['_n']
         except KeyError:
             warnings.warn('The previous statistics are not saved.')
 
@@ -397,20 +393,22 @@ class DictSummary(object):
 
         return stats
 
-    def serialize(self, serializer):
-        if isinstance(serializer, serializer_module.Serializer):
-            names = list(self._summaries.keys())
-            serializer('_names', json.dumps(names))
-            for index, name in enumerate(names):
-                self._summaries[name].serialize(
-                    serializer['_summaries'][str(index)])
-        else:
-            self._summaries.clear()
-            try:
-                names = json.loads(serializer('_names', ''))
-            except KeyError:
-                warnings.warn('The names of statistics are not saved.')
-                return
-            for index, name in enumerate(names):
-                self._summaries[name].serialize(
-                    serializer['_summaries'][str(index)])
+    def state_dict(self):
+        state_dict = {
+            '_summaries': {}
+        }
+        names = list(self._summaries.keys())
+        state_dict['_names'] = json.dumps(names)
+        for index, name in enumerate(names):
+            state_dict['_summaries'][str(index)] = self._summaries[name]
+        return state_dict
+
+    def load_state_dict(self, state_dict):
+        self._summaries.clear()
+        try:
+            names = json.loads(state_dict['_names'])
+        except KeyError:
+            warnings.warn('The names of statistics are not saved.')
+            return
+        for index, name in enumerate(names):
+            self._summaries[name] = state_dict['_summaries'][str(index)]

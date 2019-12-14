@@ -20,5 +20,10 @@ class TimeTrigger(object):
         else:
             return False
 
-    def serialize(self, serializer):
-        self._next_time = serializer('next_time', self._next_time)
+    def state_dict(self):
+        return {
+            'next_time': self._next_time
+        }
+
+    def load_state_dict(self, state_dict):
+        self._next_time = state_dict['next_time']

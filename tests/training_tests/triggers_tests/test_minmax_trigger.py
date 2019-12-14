@@ -1,6 +1,8 @@
 import tempfile
 import unittest
 
+import torch
+
 from chainer import serializers
 from chainer import testing
 from chainer.training import triggers
@@ -14,12 +16,19 @@ class BestValueTriggerTester(object):
             iter_per_epoch=self.iter_per_epoch)
         updater = trainer.updater
 
-        def _serialize_updater(serializer):
-            updater.iteration = serializer('iteration', updater.iteration)
-            updater.epoch = serializer('epoch', updater.epoch)
-            updater.is_new_epoch = serializer(
-                'is_new_epoch', updater.is_new_epoch)
-        trainer.updater.serialize = _serialize_updater
+        def _state_dict_updater():
+            return {
+                'iteration': updater.iteration,
+                'epoch': updater.epoch,
+                'is_new_epoch': updater.is_new_epoch
+            }
+        trainer.updater.state_dict = _state_dict_updater
+
+        def _load_state_dict_updater(state_dict):
+            updater.iteration = state_dict['iteration']
+            updater.epoch = state_dict['epoch']
+            updater.is_new_epoch = state_dict['is_new_epoch']
+        trainer.updater.load_state_dict = _load_state_dict_updater
 
         def set_observation(t):
             t.observation = {key: accuracies[t.updater.iteration-1]}
@@ -33,13 +42,13 @@ class BestValueTriggerTester(object):
         trainer.extend(record, name='record', trigger=trigger, priority=1)
 
         if resume is not None:
-            serializers.load_npz(resume, trainer)
+            trainer.load_state_dict(torch.load(resume))
 
         trainer.run()
         self.assertEqual(invoked_iterations, expected)
 
         if save is not None:
-            serializers.save_npz(save, trainer)
+            torch.save(trainer.state_dict(), save)
 
     def test_trigger(self):
         trigger = type(self).trigger_type(self.key, trigger=self.interval)

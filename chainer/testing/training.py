@@ -48,12 +48,13 @@ def get_trainer_with_mock_updater(
         extensions = []
     check_available()
     updater = mock.Mock()
-    updater.get_all_optimizers.return_value = {}
+    updater.get_all_models.return_value = {}
     updater.iteration = 0
     updater.epoch = 0
     updater.epoch_detail = 0
     updater.is_new_epoch = True
     updater.previous_epoch_detail = None
+    updater.state_dict.return_value = {}  # dummy state dict
 
     def update():
         updater.update_core()

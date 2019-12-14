@@ -6,6 +6,7 @@ import unittest
 
 import numpy as np
 import six
+import torch
 
 from chainer import serializers
 from chainer import testing
@@ -90,10 +91,10 @@ class TestManualScheduleTrigger(unittest.TestCase):
                 trainer.updater.update()
                 self.assertEqual(trigger(trainer), expected)
                 self.assertEqual(trigger.finished, finished)
-            serializers.save_npz(f.name, trigger)
+            torch.save(trigger.state_dict(), f.name)
 
             trigger = training.triggers.ManualScheduleTrigger(*self.schedule)
-            serializers.load_npz(f.name, trigger)
+            trigger.load_state_dict(torch.load(f.name))
             for expected, finished in zip(self.expected[self.resume:],
                                           self.finished[self.resume:]):
                 trainer.updater.update()
@@ -129,10 +130,10 @@ class TestManualScheduleTrigger(unittest.TestCase):
                     self.assertEqual(trigger(trainer), accumulated)
                     self.assertEqual(trigger.finished, finished)
                     accumulated = False
-            serializers.save_npz(f.name, trigger)
+            torch.save(trigger.state_dict(), f.name)
 
             trigger = training.triggers.ManualScheduleTrigger(*self.schedule)
-            serializers.load_npz(f.name, trigger)
+            trigger.load_state_dict(torch.load(f.name))
             for expected, finished in zip(self.expected[self.resume:],
                                           self.finished[self.resume:]):
                 trainer.updater.update()
@@ -153,11 +154,11 @@ class TestManualScheduleTrigger(unittest.TestCase):
                 self.assertEqual(trigger(trainer), expected)
                 self.assertEqual(trigger.finished, finished)
             # old version does not save anything
-            np.savez(f, dummy=0)
+            torch.save(dict(dummy=0), f.name)
 
             trigger = training.triggers.ManualScheduleTrigger(*self.schedule)
             with testing.assert_warns(UserWarning):
-                serializers.load_npz(f.name, trigger)
+                trigger.load_state_dict(torch.load(f.name))
             for expected, finished in zip(self.expected[self.resume:],
                                           self.finished[self.resume:]):
                 trainer.updater.update()

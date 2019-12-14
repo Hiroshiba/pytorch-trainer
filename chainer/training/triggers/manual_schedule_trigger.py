@@ -97,26 +97,31 @@ class ManualScheduleTrigger(object):
 
         return fire
 
-    def serialize(self, serializer):
+    def state_dict(self):
+        return {
+            'previous_iteration': self._previous_iteration,
+            'previous_epoch_detail': self._previous_epoch_detail,
+            'finished': self.finished
+        }
+
+    def load_state_dict(self, state_dict):
         try:
-            self._previous_iteration = serializer(
-                'previous_iteration', self._previous_iteration)
+            self._previous_iteration = state_dict['previous_iteration']
         except KeyError:
             warnings.warn(
                 'The previous value of iteration is not saved. '
-                'ManualScheduleTrigger guesses it using current iteration. '
+                'IntervalTrigger guesses it using current iteration. '
                 'If this trigger is not called at every iteration, '
                 'it may not work correctly.')
             # set a negative value for invalid
             self._previous_iteration = -1
 
         try:
-            self._previous_epoch_detail = serializer(
-                'previous_epoch_detail', self._previous_epoch_detail)
+            self._previous_epoch_detail = state_dict['previous_epoch_detail']
         except KeyError:
             warnings.warn(
                 'The previous value of epoch_detail is not saved. '
-                'ManualScheduleTrigger uses the value of '
+                'IntervalTrigger uses the value of '
                 'trainer.updater.previous_epoch_detail. '
                 'If this trigger is not called at every iteration, '
                 'it may not work correctly.')
@@ -124,7 +129,7 @@ class ManualScheduleTrigger(object):
             self._previous_epoch_detail = -1.
 
         try:
-            self.finished = serializer('finished', self.finished)
+            self.finished = state_dict['finished']
         except KeyError:
             warnings.warn(
                 'The flag of finished is not saved. '

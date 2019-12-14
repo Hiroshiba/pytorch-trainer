@@ -100,7 +100,7 @@ class TestTrainer(unittest.TestCase):
         serialized_time = self.trainer.elapsed_time
 
         new_trainer = self._create_mock_trainer(5)
-        testing.save_and_load_npz(self.trainer, new_trainer)
+        testing.save_and_load_pth(self.trainer, new_trainer)
 
         new_trainer.run()
         self.assertGreater(new_trainer.elapsed_time, serialized_time)

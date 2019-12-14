@@ -7,7 +7,6 @@ import traceback
 import six
 
 from chainer import reporter as reporter_module
-from chainer import serializer as serializer_module
 from chainer.training import extension as extension_module
 from chainer.training import trigger as trigger_module
 from chainer.utils import argument
@@ -149,10 +148,10 @@ class Trainer(object):
             extensions = []
 
         reporter = reporter_module.Reporter()
-        for name, optimizer in six.iteritems(updater.get_all_optimizers()):
-            reporter.add_observer(name, optimizer.target)
+        for name, model in six.iteritems(updater.get_all_models()):
+            reporter.add_observer(name, model)
             reporter.add_observers(
-                name, optimizer.target.namedlinks(skipself=True))
+                name, model.named_children())
         self.reporter = reporter
 
         self._done = False
@@ -384,21 +383,36 @@ class Trainer(object):
         self._final_elapsed_time = self.elapsed_time
         self._done = True
 
-    def serialize(self, serializer):
-        self.updater.serialize(serializer['updater'])
-        if hasattr(self.stop_trigger, 'serialize'):
-            self.stop_trigger.serialize(serializer['stop_trigger'])
+    def state_dict(self):
+        state_dict = {
+            'updater': self.updater.state_dict(),
+            'extensions': {},
+            'extension_triggers': {},
+            '_snapshot_elapsed_time': self.elapsed_time
+        }
+        if hasattr(self.stop_trigger, 'state_dict'):
+            state_dict['stop_trigger'] = self.stop_trigger.state_dict()
 
-        s = serializer['extensions']
-        t = serializer['extension_triggers']
+        s = state_dict['extensions']
+        t = state_dict['extension_triggers']
         for name, entry in six.iteritems(self._extensions):
-            if hasattr(entry.extension, 'serialize'):
-                entry.extension.serialize(s[name])
-            if hasattr(entry.trigger, 'serialize'):
-                entry.trigger.serialize(t[name])
+            if hasattr(entry.extension, 'state_dict'):
+                s[name] = entry.extension.state_dict()
+            if hasattr(entry.trigger, 'state_dict'):
+                t[name] = entry.trigger.state_dict()
 
-        if isinstance(serializer, serializer_module.Serializer):
-            serializer('_snapshot_elapsed_time', self.elapsed_time)
-        else:
-            self._snapshot_elapsed_time = serializer(
-                '_snapshot_elapsed_time', 0.0)
+        return state_dict
+
+    def load_state_dict(self, state_dict):
+        self.updater.load_state_dict(state_dict['updater'])
+        self._snapshot_elapsed_time = state_dict['_snapshot_elapsed_time']
+        if hasattr(self.stop_trigger, 'load_state_dict'):
+             self.stop_trigger.load_state_dict(state_dict['stop_trigger'])
+
+        s = state_dict['extensions']
+        t = state_dict['extension_triggers']
+        for name, entry in six.iteritems(self._extensions):
+            if hasattr(entry.extension, 'load_state_dict'):
+                entry.extension.load_state_dict(s[name])
+            if hasattr(entry.trigger, 'load_state_dict'):
+                entry.trigger.load_state_dict(t[name])

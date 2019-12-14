@@ -3,6 +3,7 @@ import warnings
 import six
 
 import chainer
+import torch
 from chainer.backends import cuda
 from chainer.dataset import convert
 from chainer.dataset import iterator as iterator_module
@@ -12,7 +13,6 @@ from chainer.utils import argument
 
 
 class StandardUpdater(_updater.Updater):
-
     """StandardUpdater(\
 iterator, optimizer, converter=convert.concat_examples, device=None, \
 loss_func=None, loss_scale=None, auto_new_epoch=True, *, input_device=None)
@@ -77,20 +77,11 @@ loss_func=None, loss_scale=None, auto_new_epoch=True, *, input_device=None)
 
     """
 
-    def __init__(self, iterator, optimizer, converter=convert.concat_examples,
-                 device=None, loss_func=None, loss_scale=None,
-                 auto_new_epoch=True, **kwargs):
-        input_device, = argument.parse_kwargs(
-            kwargs, ('input_device', None))
+    def __init__(self, iterator, optimizer, model, converter=convert.concat_examples,
+                 device=None, loss_func=None, **kwargs):
 
         if device is not None:
-            device = chainer.get_device(device)
-
-        # input_device falls back to device
-        if input_device is None:
-            input_device = device
-        else:
-            input_device = chainer.get_device(input_device)
+            device = torch.device(device)
 
         if isinstance(iterator, iterator_module.Iterator):
             iterator = {'main': iterator}
@@ -100,72 +91,18 @@ loss_func=None, loss_scale=None, auto_new_epoch=True, *, input_device=None)
             optimizer = {'main': optimizer}
         self._optimizers = optimizer
 
-        # Transfer the model
-        if device is not None:
-            for optimizer in six.itervalues(self._optimizers):
-                if device.xp is cuda.cupy:
-                    # Do not transfer between different cupy devices.
-                    # Detect GPU-to-GPU transfer and raise FutureWarning.
-                    # TODO(niboshi): Eventually replace it with to_device.
-
-                    thread_local = device_resident._thread_local
-                    has_gpu_to_gpu = False
-                    try:
-                        # Turn on GPU-to-GPU detection
-                        thread_local.flag_gpu_to_gpu = False
-                        with warnings.catch_warnings():
-                            warnings.filterwarnings(
-                                'ignore',
-                                message='to_gpu is deprecated.',
-                                category=DeprecationWarning)
-                            optimizer.target.to_gpu(device.device.id)
-                        has_gpu_to_gpu = thread_local.flag_gpu_to_gpu
-                    finally:
-                        # Turn off GPU-to-GPU detection
-                        thread_local.flag_gpu_to_gpu = None
-
-                    if has_gpu_to_gpu:
-                        warnings.warn(
-                            '''\
-Transfer between @cupy devices was detected and skipped. \
-StandardUpdater normally transfers the model to the specified device, but \
-except for between @cupy devices. \
-That is, if a part of the model is on @cupy:n device and the specified \
-device is @cupy:m device, that part of the model will be left in @cupy:n \
-device. This behavior is planned to be changed in near future. \
-After that, the model will be transferred to the specified device regardless \
-of device combination. \
-If you want to keep the model device but only want to transfer the input data \
-to a given device, specify the 'input_device' argument instead and leave the \
-'device' argument unspecified.
-''',
-                            FutureWarning)
-                else:
-                    optimizer.target.to_device(device)
+        if not isinstance(model, dict):
+            model = {'main': model}
+        self._models = model
 
         self.converter = converter
         self.loss_func = loss_func
         self.iteration = 0
         self._device = device
-        self._input_device = input_device
-
-        self.loss_scale = loss_scale
-        if loss_scale is not None:
-            for optimizer in six.itervalues(self._optimizers):
-                optimizer.set_loss_scale(loss_scale)
-
-        self.auto_new_epoch = auto_new_epoch
-        if auto_new_epoch:
-            for o in six.itervalues(self._optimizers):
-                o.use_auto_new_epoch = True
 
     @property
     def device(self):
         return self._device
-
-    @property
-    def input_device(self):
-        return self._input_device
 
     @property
     def epoch(self):
@@ -215,6 +152,15 @@ to a given device, specify the 'input_device' argument instead and leave the \
         """
         return dict(self._optimizers)
 
+    def get_all_models(self):
+        """Gets a dictionary of all models for this updater.
+
+        Returns:
+            dict: Dictionary that maps names to models.
+
+        """
+        return dict(self._models)
+
     def get_iterator(self, name):
         """Gets the dataset iterator of given name.
 
@@ -244,28 +190,59 @@ to a given device, specify the 'input_device' argument instead and leave the \
         iterator = self._iterators['main']
         batch = iterator.next()
         in_arrays = convert._call_converter(
-            self.converter, batch, self.input_device)
+            self.converter, batch, self.device)
 
         optimizer = self._optimizers['main']
-        loss_func = self.loss_func or optimizer.target
+        model = self._models['main']
+        loss_func = self.loss_func or model
+
+        model.train()
+        optimizer.zero_grad()
 
         if isinstance(in_arrays, tuple):
-            optimizer.update(loss_func, *in_arrays)
+            loss = loss_func(*in_arrays)
         elif isinstance(in_arrays, dict):
-            optimizer.update(loss_func, **in_arrays)
+            loss = loss_func(**in_arrays)
         else:
-            optimizer.update(loss_func, in_arrays)
+            loss = loss_func(in_arrays)
 
-        if self.auto_new_epoch and iterator.is_new_epoch:
-            optimizer.new_epoch(auto=True)
+        loss.backward()
+        optimizer.step()
 
-    def serialize(self, serializer):
-        """Serializes the current state of the updater object."""
-        for name, iterator in six.iteritems(self._iterators):
-            iterator.serialize(serializer['iterator:' + name])
+    def state_dict(self):
+        return {
+            'iterators': {
+                name: iterator.state_dict()
+                for name, iterator in six.iteritems(self._iterators)
+            },
+            'optimizers': {
+                name: optimizer.state_dict()
+                for name, optimizer in six.iteritems(self._optimizers)
+            },
+            'models': {
+                name: model.state_dict()
+                for name, model in six.iteritems(self._models)
+            },
+            'iteration': self.iteration
+        }
 
-        for name, optimizer in six.iteritems(self._optimizers):
-            optimizer.serialize(serializer['optimizer:' + name])
-            optimizer.target.serialize(serializer['model:' + name])
+    def load_state_dict(self, state_dict):
+        saved_iterators = state_dict['iterators']
+        assert len(saved_iterators) == len(self._iterators)
+        assert set(saved_iterators.keys()) == set(self._iterators.keys())
+        for k in saved_iterators.keys():
+            self._iterators[k].load_state_dict(saved_iterators[k])
 
-        self.iteration = serializer('iteration', self.iteration)
+        saved_optimizers = state_dict['optimizers']
+        assert len(saved_optimizers) == len(self._optimizers)
+        assert set(saved_optimizers.keys()) == set(self._optimizers.keys())
+        for k in saved_optimizers.keys():
+            self._optimizers[k].load_state_dict(saved_optimizers[k])
+
+        saved_models = state_dict['models']
+        assert len(saved_models) == len(self._models)
+        assert set(saved_models.keys()) == set(self._models.keys())
+        for k in saved_models.keys():
+            self._models[k].load_state_dict(saved_models[k])
+
+        self.iteration = state_dict['iteration']

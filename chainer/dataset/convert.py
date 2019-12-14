@@ -2,6 +2,8 @@ import collections
 
 import numpy
 import six
+import torch
+from torch._six import container_abcs
 
 import chainer
 from chainer import backend
@@ -9,7 +11,6 @@ from chainer.backends import cuda
 
 
 class Converter(object):
-
     """Base class of converters.
 
     Converters receive batched data retrieved from iterators and perform
@@ -118,7 +119,7 @@ def _call_converter(converter, batch, device):
     # Calls the converter.
     # Converter can be either new-style (accepts chainer.backend.Device) or
     # old-style (accepts int as device).
-    assert device is None or isinstance(device, backend.Device)
+    assert device is None or isinstance(device, torch.device)
 
     if isinstance(converter, Converter):
         # New-style converter
@@ -127,13 +128,8 @@ def _call_converter(converter, batch, device):
     # Old-style converter
     if device is None:
         return converter(batch, None)
-    if device.xp is numpy:
-        return converter(batch, -1)
-    if device.xp is cuda.cupy:
-        return converter(batch, device.device.id)
-    raise RuntimeError(
-        'Converter does not support ChainerX. '
-        'Use chainer.dataset.converter decorator.')
+    else:
+        return converter(batch, device)
 
 
 def to_device(device, x):
@@ -165,7 +161,7 @@ def to_device(device, x):
 
     if device is None:
         return x
-    return device.send(x)
+    return torch.as_tensor(x).to(device)
 
 
 def _get_device(device_spec):
@@ -173,7 +169,7 @@ def _get_device(device_spec):
     # Additionally to chainer.get_device, this function supports None
     if device_spec is None:
         return None
-    return backend.get_device(device_spec)
+    return torch.device(device_spec)
 
 
 # TODO(hvy): Write unit tests where batch elements contain Python lists.
@@ -259,13 +255,13 @@ def concat_examples(batch, device=None, padding=None):
         on the type of each example in the batch.
 
     """
-    assert device is None or isinstance(device, backend.Device)
+    assert device is None or isinstance(device, torch.device)
     if not batch:
         raise ValueError('batch is empty')
 
     first_elem = batch[0]
 
-    if isinstance(first_elem, tuple):
+    if isinstance(first_elem, container_abcs.Sequence):
         result = []
         if not isinstance(padding, tuple):
             padding = [padding] * len(first_elem)
@@ -276,7 +272,7 @@ def concat_examples(batch, device=None, padding=None):
 
         return tuple(result)
 
-    elif isinstance(first_elem, dict):
+    elif isinstance(first_elem, container_abcs.Mapping):
         result = {}
         if not isinstance(padding, dict):
             padding = {key: padding for key in first_elem}
@@ -294,16 +290,14 @@ def concat_examples(batch, device=None, padding=None):
 def _concat_arrays(arrays, padding):
     # Convert `arrays` to numpy.ndarray if `arrays` consists of the built-in
     # types such as int, float or list.
-    if not isinstance(arrays[0], chainer.get_array_types()):
-        arrays = numpy.asarray(arrays)
+    if not isinstance(arrays[0], chainer.get_array_types() + (torch.Tensor,)):
+        arrays = torch.as_tensor(numpy.asarray(arrays))
 
     if padding is not None:
         arr_concat = _concat_arrays_with_padding(arrays, padding)
     else:
-        device = backend.get_device_from_array(arrays[0])
-        with chainer.using_device(device):
-            arr_concat = device.xp.concatenate(
-                [array[None] for array in arrays])
+        arr_concat = torch.stack(
+            [array for array in arrays])
 
     return arr_concat
 
@@ -315,19 +309,16 @@ def _concat_arrays_with_padding(arrays, padding):
             numpy.maximum(shape, array.shape, shape)
     shape = tuple(numpy.insert(shape, 0, len(arrays)))
 
-    device = backend.get_device_from_array(arrays[0])
-    with chainer.using_device(device):
-        result = device.xp.full(shape, padding, dtype=arrays[0].dtype)
-        for i in six.moves.range(len(arrays)):
-            src = arrays[i]
-            slices = tuple(slice(dim) for dim in src.shape)
-            result[(i,) + slices] = src
+    result = torch.full(shape, padding, dtype=arrays[0].dtype)
+    for i in six.moves.range(len(arrays)):
+        src = arrays[i]
+        slices = tuple(slice(dim) for dim in src.shape)
+        result[(i,) + slices] = src
 
     return result
 
 
 class ConcatWithAsyncTransfer(object):
-
     """Interface to concatenate data and transfer them to GPU asynchronously.
 
     It enables to transfer next batch of input data to GPU while GPU is
@@ -446,7 +437,6 @@ class ConcatWithAsyncTransfer(object):
 
 
 class Conveyor(object):
-
     """Interface to handle asynchronous data transfer using double buffering.
 
     An asynchronous data transfer is initiated by :meth:`put`, and the result,

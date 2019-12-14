@@ -1,4 +1,6 @@
 from __future__ import division
+
+import copy
 import itertools
 import unittest
 
@@ -43,11 +45,10 @@ class TestIteratorCompatibility(unittest.TestCase):
             self.assertFalse(it.is_new_epoch)
             self.assertAlmostEqual(it.epoch_detail, 4 / 6)
 
-            target = dict()
-            it.serialize(serializers.DictionarySerializer(target))
+            state_dict = copy.deepcopy(it.state_dict())
 
             it = it_after()
-            it.serialize(serializers.NpzDeserializer(target))
+            it.load_state_dict(state_dict)
             self.assertFalse(it.is_new_epoch)
             self.assertAlmostEqual(it.epoch_detail, 4 / 6)
 

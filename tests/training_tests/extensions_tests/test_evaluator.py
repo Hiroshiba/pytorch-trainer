@@ -1,6 +1,8 @@
 import unittest
 
 import numpy
+import torch
+from torch import nn
 
 import chainer
 from chainer import backend
@@ -11,24 +13,26 @@ from chainer import testing
 from chainer.training import extensions
 
 
-class DummyModel(chainer.Chain):
+class DummyModel(nn.Module):
 
     def __init__(self, test):
         super(DummyModel, self).__init__()
         self.args = []
         self.test = test
+        self.double()
 
     def forward(self, x):
         self.args.append(x)
         chainer.report({'loss': x.sum()}, self)
 
 
-class DummyModelTwoArgs(chainer.Chain):
+class DummyModelTwoArgs(nn.Module):
 
     def __init__(self, test):
         super(DummyModelTwoArgs, self).__init__()
         self.args = []
         self.test = test
+        self.double()
 
     def forward(self, x, y):
         self.args.append((x, y))
@@ -68,9 +72,9 @@ class TestEvaluator(unittest.TestCase):
 
     def setUp(self):
         self.data = [
-            numpy.random.uniform(-1, 1, (3, 4)).astype('f') for _ in range(2)]
+            torch.empty(3, 4).uniform_(-1, 1) for _ in range(2)]
         self.batches = [
-            numpy.random.uniform(-1, 1, (2, 3, 4)).astype('f')
+            torch.empty(2, 3, 4).uniform_(-1, 1)
             for _ in range(2)]
 
         self.iterator = DummyIterator(self.data)
@@ -78,7 +82,7 @@ class TestEvaluator(unittest.TestCase):
         self.target = DummyModel(self)
         self.evaluator = extensions.Evaluator(
             self.iterator, self.target, converter=self.converter)
-        self.expect_mean = numpy.mean([numpy.sum(x) for x in self.batches])
+        self.expect_mean = torch.stack([torch.sum(x) for x in self.batches]).mean()
 
     def test_evaluate(self):
         reporter = chainer.Reporter()
@@ -127,21 +131,16 @@ class TestEvaluator(unittest.TestCase):
         # The result is reported to the current reporter.
         self.assertEqual(reporter.observation, mean)
 
-
-@chainer.testing.backend.inject_backend_tests(
-    None,
-    [
-        # NumPy
-        {},
-    ])
+@testing.parameterize(
+    {'device': 'cpu'})
 class TestEvaluatorTupleData(unittest.TestCase):
 
     def setUp(self):
         self.data = [
-            numpy.random.uniform(-1, 1, (3, 4)).astype('f') for _ in range(2)]
+            torch.empty(3, 4).uniform_(-1, 1) for _ in range(2)]
         self.batches = [
-            (numpy.random.uniform(-1, 1, (2, 3, 4)).astype('f'),
-             numpy.random.uniform(-1, 1, (2, 3, 4)).astype('f'))
+            (torch.empty(2, 3, 4).uniform_(-1, 1),
+             torch.empty(2, 3, 4).uniform_(-1, 1))
             for _ in range(2)]
 
     def prepare(self, data, batches, device):
@@ -152,10 +151,10 @@ class TestEvaluatorTupleData(unittest.TestCase):
             iterator, target, converter=converter, device=device)
         return iterator, converter, target, evaluator
 
-    def test_evaluate(self, backend_config):
-        data = backend_config.get_array(self.data)
-        batches = [backend_config.get_array(b) for b in self.batches]
-        device = backend_config.device
+    def test_evaluate(self):
+        data = self.data
+        batches = self.batches
+        device = self.device
 
         iterator, converter, target, evaluator = (
             self.prepare(data, batches, device))
@@ -167,25 +166,21 @@ class TestEvaluatorTupleData(unittest.TestCase):
 
         # The converter gets results of the iterator and the device number.
         self.assertEqual(len(converter.args), len(data))
-        if backend_config.use_cuda:
-            expected_device_arg = backend_config.cuda_device
-        else:
-            expected_device_arg = -1
+        expected_device_arg = self.device
 
         for i in range(len(data)):
             numpy.testing.assert_array_equal(
-                _cpu._to_cpu(converter.args[i]['batch']), self.data[i])
-            self.assertEqual(converter.args[i]['device'], expected_device_arg)
+                converter.args[i]['batch'].numpy(), self.data[i])
+            self.assertEqual(converter.args[i]['device'].type, expected_device_arg)
 
         # The model gets results of converter.
         self.assertEqual(len(target.args), len(batches))
         for i in range(len(batches)):
-            numpy.testing.assert_array_equal(
-                _cpu._to_cpu(target.args[i]), self.batches[i])
+            self.assertEqual(target.args[i], self.batches[i])
 
-        expect_mean = numpy.mean([numpy.sum(x) for x in self.batches])
+        expect_mean = torch.stack([torch.stack(x).sum() for x in self.batches]).mean()
         self.assertAlmostEqual(
-            _cpu._to_cpu(mean['target/loss']), expect_mean, places=4)
+            mean['target/loss'].numpy(), expect_mean.numpy(), places=4)
 
 
 class TestEvaluatorDictData(unittest.TestCase):
@@ -193,8 +188,8 @@ class TestEvaluatorDictData(unittest.TestCase):
     def setUp(self):
         self.data = range(2)
         self.batches = [
-            {'x': numpy.random.uniform(-1, 1, (2, 3, 4)).astype('f'),
-             'y': numpy.random.uniform(-1, 1, (2, 3, 4)).astype('f')}
+            {'x': torch.empty(2, 3, 4).uniform_(-1, 1),
+             'y': torch.empty(2, 3, 4).uniform_(-1, 1)}
             for _ in range(2)]
 
         self.iterator = DummyIterator(self.data)
@@ -217,18 +212,18 @@ class TestEvaluatorDictData(unittest.TestCase):
             numpy.testing.assert_array_equal(
                 self.target.args[i][1], self.batches[i]['y'])
 
-        expect_mean = numpy.mean(
-            [numpy.sum(x['x']) + numpy.sum(x['y']) for x in self.batches])
-        self.assertAlmostEqual(mean['target/loss'], expect_mean, places=4)
+        expect_mean = torch.stack(
+            [x['x'].sum() + x['y'].sum() for x in self.batches]).mean()
+        self.assertAlmostEqual(mean['target/loss'].numpy(), expect_mean.numpy(), places=4)
 
 
 class TestEvaluatorWithEvalFunc(unittest.TestCase):
 
     def setUp(self):
         self.data = [
-            numpy.random.uniform(-1, 1, (3, 4)).astype('f') for _ in range(2)]
+            torch.empty(3, 4).uniform_(-1, 1) for _ in range(2)]
         self.batches = [
-            numpy.random.uniform(-1, 1, (2, 3, 4)).astype('f')
+            torch.empty(2, 3, 4).uniform_(-1, 1)
             for _ in range(2)]
 
         self.iterator = DummyIterator(self.data)
@@ -260,7 +255,7 @@ class TestEvaluatorWithEvalFunc(unittest.TestCase):
 class TestEvaluatorRepeat(unittest.TestCase):
 
     def test_user_warning(self):
-        dataset = numpy.ones((4, 6))
+        dataset = torch.ones((4, 6))
         iterator = self.iterator_class(dataset, 2, repeat=self.repeat)
         if self.repeat:
             with testing.assert_warns(UserWarning):
@@ -271,7 +266,7 @@ class TestEvaluatorProgressBar(unittest.TestCase):
 
     def setUp(self):
         self.data = [
-            numpy.random.uniform(-1, 1, (3, 4)).astype('f') for _ in range(2)]
+            torch.empty(3, 4).uniform_(-1, 1) for _ in range(2)]
 
         self.iterator = iterators.SerialIterator(
             self.data, 1, repeat=False, shuffle=False)

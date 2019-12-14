@@ -1,5 +1,8 @@
+import copy
 import io
 import unittest
+
+import torch
 
 import chainer
 from chainer import testing
@@ -39,10 +42,10 @@ class TestTimeTrigger(unittest.TestCase):
         assert self.trigger._next_time == 2.0
 
         f = io.BytesIO()
-        chainer.serializers.save_npz(f, self.trigger)
+        torch.save(self.trigger.state_dict(), f)
 
         trigger = chainer.training.triggers.TimeTrigger(1)
-        chainer.serializers.load_npz(io.BytesIO(f.getvalue()), trigger)
+        trigger.load_state_dict(torch.load(io.BytesIO(f.getvalue())))
         assert trigger._next_time == 2.0
 
 

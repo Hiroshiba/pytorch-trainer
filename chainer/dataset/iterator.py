@@ -1,5 +1,4 @@
 class Iterator(object):
-
     """Base class of all dataset iterators.
 
     Iterator iterates over the dataset, yielding a minibatch at each
@@ -72,10 +71,19 @@ class Iterator(object):
     def __exit__(self, exc_type, exc_value, traceback):
         self.finalize()
 
-    def serialize(self, serializer):
+    def state_dict(self):
         """Serializes the internal state of the iterator.
 
-        This is a method to support the serializer protocol of Chainer.
+        .. note::
+           It should only serialize the internal state that changes over the
+           iteration. It should not serialize what is set manually by
+           users such as the batch size.
+
+        """
+        pass
+
+    def load_state_dict(self, state_dict):
+        """Deserializes the internal state of the iterator.
 
         .. note::
            It should only serialize the internal state that changes over the

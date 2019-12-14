@@ -3,9 +3,9 @@ import os
 import shutil
 import threading
 
+import torch
 from six.moves import queue
 
-from chainer.serializers import npz
 from chainer import utils
 
 
@@ -58,7 +58,7 @@ class Writer(object):
         prefix = 'tmp' + filename
         with utils.tempdir(prefix=prefix, dir=outdir) as tmpdir:
             tmppath = os.path.join(tmpdir, filename)
-            savefun(tmppath, target)
+            savefun(target, tmppath)
             shutil.move(tmppath, os.path.join(outdir, filename))
 
         self._post_save()
@@ -97,7 +97,7 @@ class SimpleWriter(Writer):
         - :meth:`chainer.training.extensions.snapshot`
     """
 
-    def __init__(self, savefun=npz.save_npz, **kwds):
+    def __init__(self, savefun=torch.save, **kwds):
         super(SimpleWriter, self).__init__()
         self._savefun = savefun
         self._kwds = kwds
@@ -127,7 +127,7 @@ class StandardWriter(Writer):
     _finalized = False
     _worker = None
 
-    def __init__(self, savefun=npz.save_npz, **kwds):
+    def __init__(self, savefun=torch.save, **kwds):
         super(StandardWriter, self).__init__()
         self._savefun = savefun
         self._kwds = kwds
@@ -178,7 +178,7 @@ class ThreadWriter(StandardWriter):
         - :meth:`chainer.training.extensions.snapshot`
     """
 
-    def __init__(self, savefun=npz.save_npz, **kwds):
+    def __init__(self, savefun=torch.save, **kwds):
         super(ThreadWriter, self).__init__(savefun=savefun, **kwds)
 
     def create_worker(self, filename, outdir, target, **kwds):
@@ -203,7 +203,7 @@ class ProcessWriter(StandardWriter):
         - :meth:`chainer.training.extensions.snapshot`
     """
 
-    def __init__(self, savefun=npz.save_npz, **kwds):
+    def __init__(self, savefun=torch.save, **kwds):
         super(ProcessWriter, self).__init__(savefun=savefun, **kwds)
 
     def create_worker(self, filename, outdir, target, **kwds):
@@ -238,7 +238,7 @@ class QueueWriter(Writer):
     _queue = None
     _consumer = None
 
-    def __init__(self, savefun=npz.save_npz, task=None):
+    def __init__(self, savefun=torch.save, task=None):
         super(QueueWriter, self).__init__()
         if task is None:
             self._task = self.create_task(savefun)
@@ -295,7 +295,7 @@ class ThreadQueueWriter(QueueWriter):
         - :meth:`chainer.training.extensions.snapshot`
     """
 
-    def __init__(self, savefun=npz.save_npz, task=None):
+    def __init__(self, savefun=torch.save, task=None):
         super(ThreadQueueWriter, self).__init__(savefun=savefun, task=task)
 
     def create_queue(self):
@@ -322,7 +322,7 @@ class ProcessQueueWriter(QueueWriter):
         - :meth:`chainer.training.extensions.snapshot`
     """
 
-    def __init__(self, savefun=npz.save_npz, task=None):
+    def __init__(self, savefun=torch.save, task=None):
         super(ProcessQueueWriter, self).__init__(savefun=savefun, task=task)
 
     def create_queue(self):

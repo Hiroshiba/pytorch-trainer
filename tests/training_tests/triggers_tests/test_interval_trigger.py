@@ -5,6 +5,7 @@ import tempfile
 import unittest
 
 import numpy as np
+import torch
 
 from chainer import serializers
 from chainer import testing
@@ -53,10 +54,10 @@ class TestIntervalTrigger(unittest.TestCase):
             for expected in self.expected[:self.resume]:
                 trainer.updater.update()
                 self.assertEqual(trigger(trainer), expected)
-            serializers.save_npz(f.name, trigger)
+            torch.save(trigger.state_dict(), f.name)
 
             trigger = training.triggers.IntervalTrigger(*self.interval)
-            serializers.load_npz(f.name, trigger)
+            trigger.load_state_dict(torch.load(f.name))
             for expected in self.expected[self.resume:]:
                 trainer.updater.update()
                 self.assertEqual(trigger(trainer), expected)
@@ -88,10 +89,10 @@ class TestIntervalTrigger(unittest.TestCase):
                 if random.randrange(2):
                     self.assertEqual(trigger(trainer), accumulated)
                     accumulated = False
-            serializers.save_npz(f.name, trigger)
+            torch.save(trigger.state_dict(), f.name)
 
             trigger = training.triggers.IntervalTrigger(*self.interval)
-            serializers.load_npz(f.name, trigger)
+            trigger.load_state_dict(torch.load(f.name))
             for expected in self.expected[self.resume:]:
                 trainer.updater.update()
                 accumulated = accumulated or expected
@@ -108,11 +109,11 @@ class TestIntervalTrigger(unittest.TestCase):
                 trainer.updater.update()
                 self.assertEqual(trigger(trainer), expected)
             # old version does not save anything
-            np.savez(f, dummy=0)
+            torch.save(dict(dummy=0), f.name)
 
             trigger = training.triggers.IntervalTrigger(*self.interval)
             with testing.assert_warns(UserWarning):
-                serializers.load_npz(f.name, trigger)
+                trigger.load_state_dict(torch.load(f.name))
             for expected in self.expected[self.resume:]:
                 trainer.updater.update()
                 self.assertEqual(trigger(trainer), expected)

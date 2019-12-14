@@ -1,8 +1,9 @@
 import os
 import warnings
 
+import torch
+
 import chainer
-from chainer.serializers import npz
 from chainer.training import extension
 from chainer.training.extensions import snapshot_writers
 from chainer.utils import argument
@@ -302,7 +303,7 @@ ProcessQueueWriter`
 
     if writer is None:
         if savefun is None:
-            savefun = npz.save_npz
+            savefun = torch.save
         writer = snapshot_writers.SimpleWriter(savefun=savefun)
 
     return _Snapshot(
@@ -376,7 +377,7 @@ class _Snapshot(extension.Extension):
                 # ``save_npz`` . In order to support general format,
                 # we nned to first reconstruct the design of savefun
                 # and loadfun.
-                npz.load_npz(snapshot_file, target)
+                target.load_state_dict(torch.load(snapshot_file))
                 if chainer.is_debug():
                     print('Snapshot loaded from', snapshot_file)
 
@@ -408,14 +409,14 @@ class _Snapshot(extension.Extension):
 
     def _make_snapshot(self, trainer):
         target = trainer if self._target is None else self._target
-        serialized_target = npz.serialize(target)
+        state_dict_target = target.state_dict()
         filename = self.filename
         if callable(filename):
             filename = filename(trainer)
         else:
             filename = filename.format(trainer)
         outdir = trainer.out
-        self.writer(filename, outdir, serialized_target)
+        self.writer(filename, outdir, state_dict_target)
 
     def finalize(self):
         if hasattr(self.writer, 'finalize'):

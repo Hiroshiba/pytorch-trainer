@@ -8,6 +8,8 @@ pytest = "*"
 
 [packages]
 torch = "*"
+matplotlib = "*"
+torchvision = "*"
 
 [requires]
 python_version = "3.7"
