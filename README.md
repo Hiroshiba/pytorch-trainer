@@ -98,4 +98,4 @@ pytest -s -v tests
 
 ## License
 
-MIT LICENSE (like Chainer)
+[MIT LICENSE](./LICENSE) (like Chainer)
