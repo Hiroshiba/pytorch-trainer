@@ -27,7 +27,6 @@ pytest -s -v tests
 
 ## TODO
 
-- [ ] setup.py
 - [ ] Scheduler
 - [ ] DataLoader
 

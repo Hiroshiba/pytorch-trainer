@@ -177,7 +177,7 @@ class TestEvaluatorTupleData(unittest.TestCase):
 
         expect_mean = torch.stack([torch.stack(x).sum() for x in self.batches]).mean()
         self.assertAlmostEqual(
-            mean['target/loss'], expect_mean.cpu().numpy(), places=4)
+            mean['target/loss'].cpu().numpy(), expect_mean.cpu().numpy(), places=4)
 
 
 class TestEvaluatorDictData(unittest.TestCase):
@@ -211,7 +211,7 @@ class TestEvaluatorDictData(unittest.TestCase):
 
         expect_mean = torch.stack(
             [x['x'].sum() + x['y'].sum() for x in self.batches]).mean()
-        self.assertAlmostEqual(mean['target/loss'], expect_mean.cpu().numpy(), places=4)
+        self.assertAlmostEqual(mean['target/loss'].cpu().numpy(), expect_mean.cpu().numpy(), places=4)
 
 
 class TestEvaluatorWithEvalFunc(unittest.TestCase):
