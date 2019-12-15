@@ -2,6 +2,11 @@
 
 We can use Trainer, Evaluator, Extension, and Reporter on PyTorch.
 
+## Install
+```bash
+pip install git+https://github.com/Hiroshiba/pytorch-trainer
+```
+
 ## Example
 Please see [train_mnist.py](examples/train_mnist.py) that is modifyed from [Chainer's train_mnisy.py](https://github.com/chainer/chainer/blob/a45b262a4a9390044818a1d3f8cf029257ebc004/examples/mnist/train_mnist.py).
 ```bash
