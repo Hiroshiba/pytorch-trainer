@@ -3,8 +3,8 @@ import unittest
 
 import torch
 
-from chainer import testing
-from chainer.training import triggers
+from pytorch_trainer import testing
+from pytorch_trainer.training import triggers
 
 
 class BestValueTriggerTester(object):

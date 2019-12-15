@@ -5,8 +5,8 @@ import unittest
 
 import numpy
 
-from chainer import iterators
-from chainer import testing
+from pytorch_trainer import iterators
+from pytorch_trainer import testing
 
 
 class TestSerialIterator(unittest.TestCase):

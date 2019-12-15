@@ -8,25 +8,25 @@ import numpy
 import torch
 from torch.nn import functional
 
-import chainer
-from chainer import testing
-from chainer.testing import backend
+import pytorch_trainer
+from pytorch_trainer import testing
+from pytorch_trainer.testing import backend
 
 
 class TestReporter(unittest.TestCase):
 
     def test_empty_reporter(self):
-        reporter = chainer.Reporter()
+        reporter = pytorch_trainer.Reporter()
         self.assertEqual(reporter.observation, {})
 
     def test_enter_exit(self):
-        reporter1 = chainer.Reporter()
-        reporter2 = chainer.Reporter()
+        reporter1 = pytorch_trainer.Reporter()
+        reporter2 = pytorch_trainer.Reporter()
         with reporter1:
-            self.assertIs(chainer.get_current_reporter(), reporter1)
+            self.assertIs(pytorch_trainer.get_current_reporter(), reporter1)
             with reporter2:
-                self.assertIs(chainer.get_current_reporter(), reporter2)
-            self.assertIs(chainer.get_current_reporter(), reporter1)
+                self.assertIs(pytorch_trainer.get_current_reporter(), reporter2)
+            self.assertIs(pytorch_trainer.get_current_reporter(), reporter1)
 
     def test_enter_exit_threadsafe(self):
         # This test ensures reporter.__enter__ correctly stores the reporter
@@ -37,12 +37,12 @@ class TestReporter(unittest.TestCase):
                 # Sleep for a tiny moment to cause an overlap of the context
                 # managers.
                 time.sleep(0.01)
-                record.append(chainer.get_current_reporter())
+                record.append(pytorch_trainer.get_current_reporter())
 
         record1 = []  # The current repoter in each thread is stored here.
         record2 = []
-        reporter1 = chainer.Reporter()
-        reporter2 = chainer.Reporter()
+        reporter1 = pytorch_trainer.Reporter()
+        reporter2 = pytorch_trainer.Reporter()
         thread1 = threading.Thread(
             target=thread_func,
             args=(reporter1, record1))
@@ -59,18 +59,18 @@ class TestReporter(unittest.TestCase):
         self.assertIs(record2[0], reporter2)
 
     def test_scope(self):
-        reporter1 = chainer.Reporter()
-        reporter2 = chainer.Reporter()
+        reporter1 = pytorch_trainer.Reporter()
+        reporter2 = pytorch_trainer.Reporter()
         with reporter1:
             observation = {}
             with reporter2.scope(observation):
-                self.assertIs(chainer.get_current_reporter(), reporter2)
+                self.assertIs(pytorch_trainer.get_current_reporter(), reporter2)
                 self.assertIs(reporter2.observation, observation)
-            self.assertIs(chainer.get_current_reporter(), reporter1)
+            self.assertIs(pytorch_trainer.get_current_reporter(), reporter1)
             self.assertIsNot(reporter2.observation, observation)
 
     def test_add_observer(self):
-        reporter = chainer.Reporter()
+        reporter = pytorch_trainer.Reporter()
         observer = object()
         reporter.add_observer('o', observer)
 
@@ -82,7 +82,7 @@ class TestReporter(unittest.TestCase):
         self.assertNotIn('x', observation)
 
     def test_add_observers(self):
-        reporter = chainer.Reporter()
+        reporter = pytorch_trainer.Reporter()
         observer1 = object()
         reporter.add_observer('o1', observer1)
         observer2 = object()
@@ -102,7 +102,7 @@ class TestReporter(unittest.TestCase):
         self.assertNotIn('o2/x', observation)
 
     def test_report_without_observer(self):
-        reporter = chainer.Reporter()
+        reporter = pytorch_trainer.Reporter()
         reporter.report({'x': 1})
 
         observation = reporter.observation
@@ -115,7 +115,7 @@ class TestNoKeepingGraphOnReportFlag(unittest.TestCase):
     def test_keep_graph_default(self):
         x = torch.from_numpy(numpy.array([1], numpy.float32)).requires_grad_(True)
         y = functional.sigmoid(x)
-        reporter = chainer.Reporter()
+        reporter = pytorch_trainer.Reporter()
         reporter.report({'y': y})
         self.assertFalse(reporter.observation['y'].requires_grad)
 
@@ -124,40 +124,40 @@ class TestReport(unittest.TestCase):
 
     def test_report_without_reporter(self):
         observer = object()
-        chainer.report({'x': 1}, observer)
+        pytorch_trainer.report({'x': 1}, observer)
 
     def test_report(self):
-        reporter = chainer.Reporter()
+        reporter = pytorch_trainer.Reporter()
         with reporter:
-            chainer.report({'x': 1})
+            pytorch_trainer.report({'x': 1})
         observation = reporter.observation
         self.assertIn('x', observation)
         self.assertEqual(observation['x'], 1)
 
     def test_report_with_observer(self):
-        reporter = chainer.Reporter()
+        reporter = pytorch_trainer.Reporter()
         observer = object()
         reporter.add_observer('o', observer)
         with reporter:
-            chainer.report({'x': 1}, observer)
+            pytorch_trainer.report({'x': 1}, observer)
         observation = reporter.observation
         self.assertIn('o/x', observation)
         self.assertEqual(observation['o/x'], 1)
 
     def test_report_with_unregistered_observer(self):
-        reporter = chainer.Reporter()
+        reporter = pytorch_trainer.Reporter()
         observer = object()
         with reporter:
             with self.assertRaises(KeyError):
-                chainer.report({'x': 1}, observer)
+                pytorch_trainer.report({'x': 1}, observer)
 
     def test_report_scope(self):
-        reporter = chainer.Reporter()
+        reporter = pytorch_trainer.Reporter()
         observation = {}
 
         with reporter:
-            with chainer.report_scope(observation):
-                chainer.report({'x': 1})
+            with pytorch_trainer.report_scope(observation):
+                pytorch_trainer.report({'x': 1})
 
         self.assertIn('x', observation)
         self.assertEqual(observation['x'], 1)
@@ -170,7 +170,7 @@ class TestReport(unittest.TestCase):
 class TestSummary(unittest.TestCase):
 
     def setUp(self):
-        self.summary = chainer.reporter.Summary()
+        self.summary = pytorch_trainer.reporter.Summary()
 
     def test_basic(self, backend_config):
         self.summary.add(backend_config.get_tensor(numpy.array(1, 'f')))
@@ -220,7 +220,7 @@ class TestSummary(unittest.TestCase):
         self.summary.add(value1)
         self.summary.add(value2)
 
-        summary = chainer.reporter.Summary()
+        summary = pytorch_trainer.reporter.Summary()
         testing.save_and_load_pth(self.summary, summary)
         summary.add(value3)
 
@@ -278,7 +278,7 @@ class TestSummary(unittest.TestCase):
 class TestDictSummary(unittest.TestCase):
 
     def setUp(self):
-        self.summary = chainer.reporter.DictSummary()
+        self.summary = pytorch_trainer.reporter.DictSummary()
 
     def check(self, summary, data):
         mean = summary.compute_mean()
@@ -343,7 +343,7 @@ class TestDictSummary(unittest.TestCase):
         self.summary.add({'numpy': numpy.array(1, 'f'), 'int': 5, 'float': 9.})
         self.summary.add({'numpy': numpy.array(2, 'f'), 'int': 6, 'float': 5.})
 
-        summary = chainer.reporter.DictSummary()
+        summary = pytorch_trainer.reporter.DictSummary()
         testing.save_and_load_pth(self.summary, summary)
         summary.add({'numpy': numpy.array(3, 'f'), 'int': 5, 'float': 8.})
 
@@ -358,7 +358,7 @@ class TestDictSummary(unittest.TestCase):
         self.summary.add({'a/b': 1., '/a/b': 5., 'a/b/': 9.})
         self.summary.add({'a/b': 2., '/a/b': 6., 'a/b/': 5.})
 
-        summary = chainer.reporter.DictSummary()
+        summary = pytorch_trainer.reporter.DictSummary()
         testing.save_and_load_pth(self.summary, summary)
         summary.add({'a/b': 3., '/a/b': 5., 'a/b/': 8.})
 
@@ -372,7 +372,7 @@ class TestDictSummary(unittest.TestCase):
         self.summary.add({'a': 3., 'b': 1.})
         self.summary.add({'a': 1., 'b': 5.})
 
-        summary = chainer.reporter.DictSummary()
+        summary = pytorch_trainer.reporter.DictSummary()
         summary.add({'c': 5.})
         testing.save_and_load_pth(self.summary, summary)
 

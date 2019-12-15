@@ -8,9 +8,9 @@ import numpy
 import torch
 from torch import nn
 
-import chainer
-from chainer import testing
-from chainer import training
+import pytorch_trainer
+from pytorch_trainer import testing
+from pytorch_trainer import training
 
 
 class Model(nn.Module):
@@ -34,7 +34,7 @@ class TestFailOnNonNumber(unittest.TestCase):
         self.optimizer = torch.optim.Adam(self.model.parameters())
 
         self.dataset = torch.DoubleTensor([i for i in range(self.n_data)])
-        self.iterator = chainer.iterators.SerialIterator(
+        self.iterator = pytorch_trainer.iterators.SerialIterator(
             self.dataset, 1, shuffle=False)
         self.temp_dir = tempfile.mkdtemp()
 

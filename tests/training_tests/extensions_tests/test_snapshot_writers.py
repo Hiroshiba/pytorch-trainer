@@ -4,12 +4,12 @@ import unittest
 
 import mock
 
-from chainer import testing
-from chainer.training.extensions import snapshot_writers
-from chainer import utils
+from pytorch_trainer import testing
+from pytorch_trainer.training.extensions import snapshot_writers
+from pytorch_trainer import utils
 
 
-snapshot_writers_path = 'chainer.training.extensions.snapshot_writers'
+snapshot_writers_path = 'pytorch_trainer.training.extensions.snapshot_writers'
 
 
 class TestSimpleWriter(unittest.TestCase):

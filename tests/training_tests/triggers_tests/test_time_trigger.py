@@ -4,8 +4,8 @@ import unittest
 
 import torch
 
-import chainer
-from chainer import testing
+import pytorch_trainer
+from pytorch_trainer import testing
 
 
 class DummyTrainer(object):
@@ -17,7 +17,7 @@ class DummyTrainer(object):
 class TestTimeTrigger(unittest.TestCase):
 
     def setUp(self):
-        self.trigger = chainer.training.triggers.TimeTrigger(1)
+        self.trigger = pytorch_trainer.training.triggers.TimeTrigger(1)
         self.trainer = DummyTrainer()
 
     def test_call(self):
@@ -44,7 +44,7 @@ class TestTimeTrigger(unittest.TestCase):
         f = io.BytesIO()
         torch.save(self.trigger.state_dict(), f)
 
-        trigger = chainer.training.triggers.TimeTrigger(1)
+        trigger = pytorch_trainer.training.triggers.TimeTrigger(1)
         trigger.load_state_dict(torch.load(io.BytesIO(f.getvalue())))
         assert trigger._next_time == 2.0
 

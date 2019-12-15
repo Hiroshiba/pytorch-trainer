@@ -9,12 +9,12 @@ import unittest
 import mock
 import pytest
 
-from chainer import testing
-from chainer import training
-from chainer.training import extensions
-from chainer.training.extensions._snapshot import _find_latest_snapshot
-from chainer.training.extensions._snapshot import _find_snapshot_files
-from chainer.training.extensions._snapshot import _find_stale_snapshots
+from pytorch_trainer import testing
+from pytorch_trainer import training
+from pytorch_trainer.training import extensions
+from pytorch_trainer.training.extensions._snapshot import _find_latest_snapshot
+from pytorch_trainer.training.extensions._snapshot import _find_snapshot_files
+from pytorch_trainer.training.extensions._snapshot import _find_stale_snapshots
 
 
 class TestSnapshot(unittest.TestCase):

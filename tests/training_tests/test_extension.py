@@ -2,8 +2,8 @@ import unittest
 
 import pytest
 
-from chainer import testing
-from chainer import training
+from pytorch_trainer import testing
+from pytorch_trainer import training
 
 
 class TestExtension(unittest.TestCase):

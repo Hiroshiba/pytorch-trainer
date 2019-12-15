@@ -2,8 +2,8 @@ import unittest
 
 import six
 
-from chainer import _runtime_info
-from chainer import testing
+from pytorch_trainer import _runtime_info
+from pytorch_trainer import testing
 
 
 class TestRuntimeInfo(unittest.TestCase):

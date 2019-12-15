@@ -3,7 +3,7 @@ from __future__ import division
 import math
 import unittest
 
-from chainer import testing
+from pytorch_trainer import testing
 
 
 def _dummy_extension(trainer):

@@ -3,8 +3,8 @@ import warnings
 
 import pytest
 
-from chainer import testing
-from chainer.training import extensions
+from pytorch_trainer import testing
+from pytorch_trainer.training import extensions
 
 
 try:

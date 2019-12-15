@@ -4,10 +4,10 @@ import numpy
 import pytest
 import torch
 
-import chainer
-from chainer import testing
-from chainer.training import triggers
-from chainer.training import util
+import pytorch_trainer
+from pytorch_trainer import testing
+from pytorch_trainer.training import triggers
+from pytorch_trainer.training import util
 
 
 def _test_trigger(self, trigger, key, accuracies, expected):

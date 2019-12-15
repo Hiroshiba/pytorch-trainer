@@ -7,9 +7,9 @@ import unittest
 import numpy as np
 import torch
 
-from chainer import testing
-from chainer.testing import condition
-from chainer import training
+from pytorch_trainer import testing
+from pytorch_trainer.testing import condition
+from pytorch_trainer import training
 
 
 @testing.parameterize(

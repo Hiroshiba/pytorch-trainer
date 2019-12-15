@@ -3,8 +3,8 @@ import unittest
 
 import mock
 
-from chainer import testing
-from chainer.training import extensions
+from pytorch_trainer import testing
+from pytorch_trainer.training import extensions
 
 
 class TestPrintReport(unittest.TestCase):

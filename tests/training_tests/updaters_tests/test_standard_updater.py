@@ -7,10 +7,10 @@ from torch import DoubleTensor
 from torch import nn
 from torch.optim.optimizer import Optimizer
 
-import chainer
-from chainer import dataset
-from chainer import testing
-from chainer import training
+import pytorch_trainer
+from pytorch_trainer import dataset
+from pytorch_trainer import testing
+from pytorch_trainer import training
 
 
 class DummyIterator(dataset.Iterator):
@@ -171,7 +171,7 @@ class TestStandardUpdaterDataTypes(unittest.TestCase):
 @testing.parameterize(
     {'converter_style': 'decorator'},
     {'converter_style': 'class'})
-@chainer.testing.backend.inject_backend_tests(
+@pytorch_trainer.testing.backend.inject_backend_tests(
     ['test_converter_given_device'],
     [
         # NumPy
@@ -201,7 +201,7 @@ class TestStandardUpdaterCustomConverter(unittest.TestCase):
 
     def get_converter(self, converter_func):
         if self.converter_style == 'decorator':
-            @chainer.dataset.converter()
+            @pytorch_trainer.dataset.converter()
             def wrapped_converter(*args, **kwargs):
                 return converter_func(*args, **kwargs)
 

@@ -4,15 +4,16 @@ import argparse
 import torch
 from torchvision.transforms import transforms
 
-import chainer
+import pytorch_trainer
 import torch.nn.functional as F
 import torch.nn as nn
 from torchvision import datasets
-from chainer import training
-from chainer.training import extensions
-from chainer import reporter
+from pytorch_trainer import training
+from pytorch_trainer.training import extensions
+from pytorch_trainer import reporter
 
 import matplotlib
+
 matplotlib.use('Agg')
 
 
@@ -62,16 +63,16 @@ def main():
                         help='Frequency of taking a snapshot')
     parser.add_argument('--device', '-d', type=str, default='-1',
                         help='Device specifier. Either ChainerX device '
-                        'specifier or an integer. If non-negative integer, '
-                        'CuPy arrays with specified device id are used. If '
-                        'negative integer, NumPy arrays are used')
+                             'specifier or an integer. If non-negative integer, '
+                             'CuPy arrays with specified device id are used. If '
+                             'negative integer, NumPy arrays are used')
     parser.add_argument('--out', '-o', default='result',
                         help='Directory to output the result')
     parser.add_argument('--resume', '-r', type=str,
                         help='Resume the training from snapshot')
     parser.add_argument('--autoload', action='store_true',
                         help='Automatically load trainer snapshots in case'
-                        ' of preemption or other temporary system failure')
+                             ' of preemption or other temporary system failure')
     parser.add_argument('--unit', '-u', type=int, default=1000,
                         help='Number of units')
     group = parser.add_argument_group('deprecated arguments')
@@ -101,9 +102,9 @@ def main():
     train = datasets.MNIST('data', train=True, download=True, transform=transform)
     test = datasets.MNIST('data', train=False, transform=transform)
 
-    train_iter = chainer.iterators.SerialIterator(train, args.batchsize)
-    test_iter = chainer.iterators.SerialIterator(test, args.batchsize,
-                                                 repeat=False, shuffle=False)
+    train_iter = pytorch_trainer.iterators.SerialIterator(train, args.batchsize)
+    test_iter = pytorch_trainer.iterators.SerialIterator(test, args.batchsize,
+                                                         repeat=False, shuffle=False)
 
     # Set up a trainer
     updater = training.updaters.StandardUpdater(

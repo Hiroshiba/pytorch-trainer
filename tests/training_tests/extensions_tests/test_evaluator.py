@@ -4,11 +4,11 @@ import numpy
 import torch
 from torch import nn
 
-import chainer
-from chainer import dataset
-from chainer import iterators
-from chainer import testing
-from chainer.training import extensions
+import pytorch_trainer
+from pytorch_trainer import dataset
+from pytorch_trainer import iterators
+from pytorch_trainer import testing
+from pytorch_trainer.training import extensions
 
 
 class DummyModel(nn.Module):
@@ -21,7 +21,7 @@ class DummyModel(nn.Module):
 
     def forward(self, x):
         self.args.append(x)
-        chainer.report({'loss': x.sum()}, self)
+        pytorch_trainer.report({'loss': x.sum()}, self)
 
 
 class DummyModelTwoArgs(nn.Module):
@@ -34,7 +34,7 @@ class DummyModelTwoArgs(nn.Module):
 
     def forward(self, x, y):
         self.args.append((x, y))
-        chainer.report({'loss': x.sum() + y.sum()}, self)
+        pytorch_trainer.report({'loss': x.sum() + y.sum()}, self)
 
 
 class DummyIterator(dataset.Iterator):
@@ -82,7 +82,7 @@ class TestEvaluator(unittest.TestCase):
         self.expect_mean = torch.stack([torch.sum(x) for x in self.batches]).mean()
 
     def test_evaluate(self):
-        reporter = chainer.Reporter()
+        reporter = pytorch_trainer.Reporter()
         reporter.add_observer('target', self.target)
         with reporter:
             mean = self.evaluator.evaluate()
@@ -122,7 +122,7 @@ class TestEvaluator(unittest.TestCase):
             mean['eval/main/loss'], self.expect_mean, places=4)
 
     def test_current_report(self):
-        reporter = chainer.Reporter()
+        reporter = pytorch_trainer.Reporter()
         with reporter:
             mean = self.evaluator()
         # The result is reported to the current reporter.
@@ -156,7 +156,7 @@ class TestEvaluatorTupleData(unittest.TestCase):
         iterator, converter, target, evaluator = (
             self.prepare(data, batches, device))
 
-        reporter = chainer.Reporter()
+        reporter = pytorch_trainer.Reporter()
         reporter.add_observer('target', target)
         with reporter:
             mean = evaluator.evaluate()
@@ -196,7 +196,7 @@ class TestEvaluatorDictData(unittest.TestCase):
             self.iterator, self.target, converter=self.converter)
 
     def test_evaluate(self):
-        reporter = chainer.Reporter()
+        reporter = pytorch_trainer.Reporter()
         reporter.add_observer('target', self.target)
         with reporter:
             mean = self.evaluator.evaluate()
@@ -231,7 +231,7 @@ class TestEvaluatorWithEvalFunc(unittest.TestCase):
             eval_func=self.target)
 
     def test_evaluate(self):
-        reporter = chainer.Reporter()
+        reporter = pytorch_trainer.Reporter()
         reporter.add_observer('target', self.target)
         with reporter:
             self.evaluator.evaluate()
@@ -271,7 +271,7 @@ class TestEvaluatorProgressBar(unittest.TestCase):
             self.iterator, {}, eval_func=self.target, progress_bar=True)
 
     def test_evaluator(self):
-        reporter = chainer.Reporter()
+        reporter = pytorch_trainer.Reporter()
         reporter.add_observer('target', self.target)
         with reporter:
             self.evaluator.evaluate()

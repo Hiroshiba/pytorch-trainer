@@ -15,9 +15,9 @@ import unittest
 import numpy
 import six
 
-from chainer import iterators
-from chainer import testing
-from chainer.testing import attr
+from pytorch_trainer import iterators
+from pytorch_trainer import testing
+from pytorch_trainer.testing import attr
 
 
 class BaseTestMultiprocessIterator(object):
@@ -666,7 +666,7 @@ import os
 import random
 import sys
 import time
-from chainer import iterators
+from pytorch_trainer import iterators
 
 # Using `multiprocessing` on Windows Python 2.7 requires
 # that the script can be found on `sys.path`.

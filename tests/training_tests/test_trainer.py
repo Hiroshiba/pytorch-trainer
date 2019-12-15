@@ -2,8 +2,8 @@ import time
 import traceback
 import unittest
 
-from chainer import testing
-from chainer import training
+from pytorch_trainer import testing
+from pytorch_trainer import training
 
 
 class DummyExtension(training.extension.Extension):
