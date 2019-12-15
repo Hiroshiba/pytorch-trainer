@@ -3,9 +3,7 @@ import six
 import torch
 
 import chainer
-from chainer import backend
 from chainer import utils
-import chainerx
 
 
 def assert_allclose(x, y, atol=1e-5, rtol=1e-4, verbose=True):
@@ -21,8 +19,8 @@ def assert_allclose(x, y, atol=1e-5, rtol=1e-4, verbose=True):
         verbose (bool): If ``True``, it outputs verbose messages on error.
 
     """
-    x = torch.as_tensor(x).numpy()
-    y = torch.as_tensor(y).numpy()
+    x = torch.as_tensor(x).cpu().numpy()
+    y = torch.as_tensor(y).cpu().numpy()
     try:
         numpy.testing.assert_allclose(
             x, y, atol=atol, rtol=rtol, verbose=verbose)

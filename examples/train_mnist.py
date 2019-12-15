@@ -33,7 +33,7 @@ class MLP(nn.Module):
 
 
 def accuracy(y, t):
-    pred = y.argmax(axis=1).reshape(t.shape)
+    pred = y.argmax(1).reshape(t.shape)
     acc = (pred == t).mean(dtype=y.dtype)
     return acc
 

@@ -2,11 +2,8 @@ import functools
 
 import torch
 
-import chainer
-from chainer import backend
 from chainer.testing import _bundle
 from chainer.testing import attr
-import chainerx
 
 
 # TODO(hvy): BackendConfig.__enter__ does not have to modify the current
@@ -14,7 +11,6 @@ import chainerx
 class BackendConfig(object):
 
     _props = [
-        # CuPy
         ('use_cuda', False),
         ('cuda_device', None),  # 0 by default, if use_cuda=True
     ]

@@ -114,8 +114,7 @@ device=None, eval_hook=None, eval_func=None, *, progress_bar=False)
 
         for key, iter in six.iteritems(iterator):
             if (isinstance(iter, (iterators.SerialIterator,
-                                  iterators.MultiprocessIterator,
-                                  iterators.MultithreadIterator)) and
+                                  iterators.MultiprocessIterator)) and
                     getattr(iter, 'repeat', False)):
                 msg = 'The `repeat` property of the iterator {} '
                 'is set to `True`. Typically, the evaluator sweeps '
@@ -174,7 +173,6 @@ device=None, eval_hook=None, eval_func=None, *, progress_bar=False)
                                    target.named_children())
 
         with reporter:
-            self._targets['main'].eval()
             result = self.evaluate()
 
         reporter_module.report(result)
@@ -209,6 +207,9 @@ device=None, eval_hook=None, eval_func=None, *, progress_bar=False)
         """
         iterator = self._iterators['main']
         eval_func = self.eval_func or self._targets['main']
+
+        for target in self._targets.values():
+            target.eval()
 
         if self.eval_hook:
             self.eval_hook(self)

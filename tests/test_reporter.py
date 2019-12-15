@@ -9,7 +9,6 @@ import torch
 from torch.nn import functional
 
 import chainer
-from chainer import configuration
 from chainer import testing
 from chainer.testing import backend
 
@@ -111,43 +110,13 @@ class TestReporter(unittest.TestCase):
         self.assertEqual(observation['x'], 1)
 
 
-class TestKeepGraphOnReportFlag(unittest.TestCase):
-
-    @contextlib.contextmanager
-    def _scope(self, flag):
-        # If flag is None, return the nop context.
-        # Otherwise, return the context in which
-        # keep_graph_on_report is set temporarily.
-        old = configuration.config.keep_graph_on_report
-        if flag is not None:
-            configuration.config.keep_graph_on_report = flag
-        try:
-            yield
-        finally:
-            configuration.config.keep_graph_on_report = old
+class TestNoKeepingGraphOnReportFlag(unittest.TestCase):
 
     def test_keep_graph_default(self):
         x = torch.from_numpy(numpy.array([1], numpy.float32)).requires_grad_(True)
         y = functional.sigmoid(x)
         reporter = chainer.Reporter()
-        with self._scope(None):
-            reporter.report({'y': y})
-        self.assertFalse(reporter.observation['y'].requires_grad)
-
-    def test_keep_graph(self):
-        x = torch.from_numpy(numpy.array([1], numpy.float32)).requires_grad_(True)
-        y = functional.sigmoid(x)
-        reporter = chainer.Reporter()
-        with self._scope(True):
-            reporter.report({'y': y})
-        self.assertTrue(reporter.observation['y'].requires_grad)
-
-    def test_not_keep_graph(self):
-        x = torch.from_numpy(numpy.array([1], numpy.float32)).requires_grad_(True)
-        y = functional.sigmoid(x)
-        reporter = chainer.Reporter()
-        with self._scope(False):
-            reporter.report({'y': y})
+        reporter.report({'y': y})
         self.assertFalse(reporter.observation['y'].requires_grad)
 
 
@@ -248,7 +217,6 @@ class TestSummary(unittest.TestCase):
         testing.assert_allclose(mean, val)
 
     def check_serialize(self, value1, value2, value3):
-        xp = chainer.backend.get_array_module(value1, value2, value3)
         self.summary.add(value1)
         self.summary.add(value2)
 
@@ -256,9 +224,9 @@ class TestSummary(unittest.TestCase):
         testing.save_and_load_pth(self.summary, summary)
         summary.add(value3)
 
-        expected_mean = (value1 + value2 + value3) / 3.
-        expected_std = xp.sqrt(
-            (value1 ** 2 + value2 ** 2 + value3 ** 2) / 3. - expected_mean ** 2)
+        expected_mean = (value1 + value2 + value3).to(dtype=torch.float) / 3.
+        expected_std = ((value1 ** 2 + value2 ** 2 + value3 ** 2)
+            .to(dtype=torch.float) / 3. - expected_mean ** 2).sqrt()
 
         mean = summary.compute_mean()
         testing.assert_allclose(mean, expected_mean)

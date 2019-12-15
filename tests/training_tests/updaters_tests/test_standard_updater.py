@@ -42,21 +42,6 @@ class DummyOptimizer(Optimizer):
         self.load_state_dict = mock.Mock()
 
 
-class DummySerializer(chainer.Serializer):
-
-    def __init__(self, path=None):
-        if path is None:
-            path = []
-        self.path = path
-        self.called = []
-
-    def __getitem__(self, key):
-        return DummySerializer(self.path + [key])
-
-    def __call__(self, key, value):
-        self.called.append((key, value))
-
-
 class DummyModel(nn.Module):
     def __init__(self):
         super(DummyModel, self).__init__()

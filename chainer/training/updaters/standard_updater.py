@@ -4,12 +4,9 @@ import six
 
 import chainer
 import torch
-from chainer.backends import cuda
 from chainer.dataset import convert
 from chainer.dataset import iterator as iterator_module
-from chainer import device_resident
 from chainer.training import _updater
-from chainer.utils import argument
 
 
 class StandardUpdater(_updater.Updater):
@@ -196,7 +193,8 @@ loss_func=None, loss_scale=None, auto_new_epoch=True, *, input_device=None)
         model = self._models['main']
         loss_func = self.loss_func or model
 
-        model.train()
+        for model in self._models.values():
+            model.eval()
         optimizer.zero_grad()
 
         if isinstance(in_arrays, tuple):

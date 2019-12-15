@@ -367,9 +367,7 @@ class _Snapshot(extension.Extension):
             # trainer.
             filename = _find_latest_snapshot(self.filename, outdir)
             if filename is None:
-                if chainer.is_debug():
-                    print('No snapshot file that matches {} was found'
-                          .format(self.filename))
+                pass
             else:
                 snapshot_file = os.path.join(outdir, filename)
                 # As described above (at ``autoload`` option),
@@ -378,8 +376,6 @@ class _Snapshot(extension.Extension):
                 # we nned to first reconstruct the design of savefun
                 # and loadfun.
                 target.load_state_dict(torch.load(snapshot_file))
-                if chainer.is_debug():
-                    print('Snapshot loaded from', snapshot_file)
 
         if (hasattr(self.writer, '_add_cleanup_hook')
                 and self.n_retains > 0

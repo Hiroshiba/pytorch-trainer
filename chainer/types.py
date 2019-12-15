@@ -8,18 +8,6 @@ except ImportError:
     # typing.TYPE_CHECKING doesn't exist before Python 3.5.2
     TYPE_CHECKING = False
 
-# import chainer modules only for type checkers to avoid circular import
-if TYPE_CHECKING:
-    from types import ModuleType  # NOQA
-
-    import numpy  # NOQA
-
-    from chainer import backend  # NOQA
-    from chainer.backends import cuda, intel64  # NOQA
-    from chainer import initializer  # NOQA
-
-    import chainerx  # NOQA
-
 
 Shape = tp.Tuple[int, ...]
 

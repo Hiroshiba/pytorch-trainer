@@ -88,6 +88,9 @@ class Updater(object):
         """
         raise NotImplementedError
 
-    def serialize(self, serializer):
+    def state_dict(self):
         """Serializes the current state of the updater object."""
+        raise NotImplementedError
+
+    def load_state_dict(self, state_dict):
         raise NotImplementedError

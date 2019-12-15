@@ -11,9 +11,6 @@ import numpy
 import six
 import torch
 
-from chainer import configuration
-from chainer import variable
-
 
 _thread_local = threading.local()
 
@@ -157,8 +154,7 @@ class Reporter(object):
                 name of the observed value.
 
         """
-        if not configuration.config.keep_graph_on_report:
-            values = {k: _copy_tensor(v) for k, v in six.iteritems(values)}
+        values = {k: _copy_tensor(v) for k, v in six.iteritems(values)}
 
         if observer is not None:
             observer_id = id(observer)
@@ -290,7 +286,7 @@ class Summary(object):
     def compute_mean(self):
         """Computes the mean."""
         x, n = self._x, self._n
-        return x / n
+        return torch.as_tensor(x).to(torch.float) / n
 
     def make_statistics(self):
         """Computes and returns the mean and standard deviation values.
@@ -300,8 +296,8 @@ class Summary(object):
 
         """
         x, n = self._x, self._n
-        mean = x / n
-        var = self._x2 / n - mean * mean
+        mean = torch.as_tensor(x).to(torch.float) / n
+        var = torch.as_tensor(self._x2).to(torch.float) / n - mean * mean
         std = torch.as_tensor(var).sqrt()
         return mean, std
 
@@ -350,13 +346,13 @@ class DictSummary(object):
             if isinstance(v, tuple):
                 w = v[1]
                 v = v[0]
-                if isinstance(w, variable.Variable):
-                    w = w.array
+                if isinstance(w, torch.Tensor):
+                    w = w.cpu().numpy()
                 if not numpy.isscalar(w) and not getattr(w, 'ndim', -1) == 0:
                     raise ValueError(
                         'Given weight to {} was not scalar.'.format(k))
-            if isinstance(v, variable.Variable):
-                v = v.array
+            if isinstance(v, torch.Tensor):
+                v = v.cpu().numpy()
             if numpy.isscalar(v) or getattr(v, 'ndim', -1) == 0:
                 summaries[k].add(v, weight=w)
 

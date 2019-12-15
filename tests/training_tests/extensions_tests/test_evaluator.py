@@ -5,7 +5,6 @@ import torch
 from torch import nn
 
 import chainer
-from chainer import backend
 from chainer import dataset
 from chainer import iterators
 from chainer import testing
@@ -35,8 +34,7 @@ class DummyModelTwoArgs(nn.Module):
 
     def forward(self, x, y):
         self.args.append((x, y))
-        with chainer.using_device(backend.get_device_from_array(x, y)):
-            chainer.report({'loss': x.sum() + y.sum()}, self)
+        chainer.report({'loss': x.sum() + y.sum()}, self)
 
 
 class DummyIterator(dataset.Iterator):
@@ -169,7 +167,7 @@ class TestEvaluatorTupleData(unittest.TestCase):
 
         for i in range(len(data)):
             numpy.testing.assert_array_equal(
-                converter.args[i]['batch'].numpy(), self.data[i])
+                converter.args[i]['batch'].cpu().numpy(), self.data[i])
             self.assertEqual(converter.args[i]['device'].type, expected_device_arg)
 
         # The model gets results of converter.
@@ -179,7 +177,7 @@ class TestEvaluatorTupleData(unittest.TestCase):
 
         expect_mean = torch.stack([torch.stack(x).sum() for x in self.batches]).mean()
         self.assertAlmostEqual(
-            mean['target/loss'].numpy(), expect_mean.numpy(), places=4)
+            mean['target/loss'], expect_mean.cpu().numpy(), places=4)
 
 
 class TestEvaluatorDictData(unittest.TestCase):
@@ -213,7 +211,7 @@ class TestEvaluatorDictData(unittest.TestCase):
 
         expect_mean = torch.stack(
             [x['x'].sum() + x['y'].sum() for x in self.batches]).mean()
-        self.assertAlmostEqual(mean['target/loss'].numpy(), expect_mean.numpy(), places=4)
+        self.assertAlmostEqual(mean['target/loss'], expect_mean.cpu().numpy(), places=4)
 
 
 class TestEvaluatorWithEvalFunc(unittest.TestCase):
@@ -248,8 +246,7 @@ class TestEvaluatorWithEvalFunc(unittest.TestCase):
 @testing.parameterize(*testing.product({
     'repeat': [True, False],
     'iterator_class': [iterators.SerialIterator,
-                       iterators.MultiprocessIterator,
-                       iterators.MultithreadIterator]
+                       iterators.MultiprocessIterator]
 }))
 class TestEvaluatorRepeat(unittest.TestCase):
 

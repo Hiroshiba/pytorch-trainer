@@ -2,7 +2,6 @@ import os
 
 import torch
 
-from chainer import serializers
 from chainer import utils
 
 
