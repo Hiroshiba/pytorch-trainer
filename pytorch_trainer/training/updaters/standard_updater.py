@@ -194,7 +194,7 @@ loss_func=None, loss_scale=None, auto_new_epoch=True, *, input_device=None)
         loss_func = self.loss_func or model
 
         for model in self._models.values():
-            model.eval()
+            model.train()
         optimizer.zero_grad()
 
         if isinstance(in_arrays, tuple):
