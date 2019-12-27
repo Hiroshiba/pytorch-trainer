@@ -347,12 +347,12 @@ class DictSummary(object):
                 w = v[1]
                 v = v[0]
                 if isinstance(w, torch.Tensor):
-                    w = w.cpu().numpy()
+                    w = w.detach().cpu().numpy()
                 if not numpy.isscalar(w) and not getattr(w, 'ndim', -1) == 0:
                     raise ValueError(
                         'Given weight to {} was not scalar.'.format(k))
             if isinstance(v, torch.Tensor):
-                v = v.cpu().numpy()
+                v = v.detach().cpu().numpy()
             if numpy.isscalar(v) or getattr(v, 'ndim', -1) == 0:
                 summaries[k].add(v, weight=w)
 
