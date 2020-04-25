@@ -173,7 +173,8 @@ device=None, eval_hook=None, eval_func=None, *, progress_bar=False)
                                    target.named_children())
 
         with reporter:
-            result = self.evaluate()
+            with torch.no_grad():
+                result = self.evaluate()
 
         reporter_module.report(result)
         return result
