@@ -114,7 +114,8 @@ device=None, eval_hook=None, eval_func=None, *, progress_bar=False)
 
         for key, iter in six.iteritems(iterator):
             if (isinstance(iter, (iterators.SerialIterator,
-                                  iterators.MultiprocessIterator)) and
+                                  iterators.MultiprocessIterator,
+                                  iterators.MultithreadIterator)) and
                     getattr(iter, 'repeat', False)):
                 msg = 'The `repeat` property of the iterator {} '
                 'is set to `True`. Typically, the evaluator sweeps '

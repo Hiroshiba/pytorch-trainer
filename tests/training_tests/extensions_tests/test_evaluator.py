@@ -246,7 +246,8 @@ class TestEvaluatorWithEvalFunc(unittest.TestCase):
 @testing.parameterize(*testing.product({
     'repeat': [True, False],
     'iterator_class': [iterators.SerialIterator,
-                       iterators.MultiprocessIterator]
+                       iterators.MultiprocessIterator,
+                       iterators.MultithreadIterator]
 }))
 class TestEvaluatorRepeat(unittest.TestCase):
 

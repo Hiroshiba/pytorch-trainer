@@ -63,32 +63,40 @@ epoch       main/loss   validation/main/loss  main/accuracy  validation/main/acc
 ## Supported Classes
 ```
 pytorch_trainer/
-├── iterators
-│   ├── multiprocess_iterator.py
-│   ├── order_samplers.py
-│   └── serial_iterator.py
-├── reporter.py
-└── training
-    ├── extensions
-    │   ├── evaluator.py
-    │   ├── fail_on_nonnumber.py
-    │   ├── log_report.py
-    │   ├── micro_average.py
-    │   ├── plot_report.py
-    │   ├── print_report.py
-    │   ├── progress_bar.py
-    │   ├── snapshot_writers.py
-    │   └── value_observation.py
-    ├── trainer.py
-    ├── triggers
-    │   ├── early_stopping_trigger.py
-    │   ├── interval_trigger.py
-    │   ├── manual_schedule_trigger.py
-    │   ├── minmax_value_trigger.py
-    │   ├── once_trigger.py
-    │   └── time_trigger.py
-    └── updaters
-        └── standard_updater.py
+|-- iterators
+|   |-- multiprocess_iterator.py
+|   |-- multithread_iterator.py
+|   |-- order_samplers.py
+|   `-- serial_iterator.py
+|-- reporter.py
+`-- training
+    |-- extensions
+    |   |-- evaluator.py
+    |   |-- exponential_shift.py
+    |   |-- fail_on_nonnumber.py
+    |   |-- inverse_shift.py
+    |   |-- linear_shift.py
+    |   |-- log_report.py
+    |   |-- micro_average.py
+    |   |-- multistep_shift.py
+    |   |-- plot_report.py
+    |   |-- polynomial_shift.py
+    |   |-- print_report.py
+    |   |-- progress_bar.py
+    |   |-- snapshot_writers.py
+    |   |-- step_shift.py
+    |   |-- value_observation.py
+    |   `-- warmup_shift.py
+    |-- trainer.py
+    |-- triggers
+    |   |-- early_stopping_trigger.py
+    |   |-- interval_trigger.py
+    |   |-- manual_schedule_trigger.py
+    |   |-- minmax_value_trigger.py
+    |   |-- once_trigger.py
+    |   `-- time_trigger.py
+    `-- updaters
+        `-- standard_updater.py
 ```
 
 ## Test
@@ -98,7 +106,7 @@ pytest -s -v tests
 
 ## TODO
 
-- [ ] Scheduler
+- [x] Scheduler
 - [ ] DataLoader
 
 ## License
