@@ -41,4 +41,4 @@ def observe_lr(optimizer_name='main', observation_key='lr'):
     """
     return observe_value(
         observation_key,
-        lambda trainer: trainer.updater.get_optimizer(optimizer_name).lr)
+        lambda trainer: trainer.updater.get_optimizer(optimizer_name).param_groups[0]["lr"])
