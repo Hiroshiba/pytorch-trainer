@@ -9,6 +9,7 @@ import warnings
 
 import numpy
 import six
+import torch
 
 from pytorch_trainer.dataset import iterator
 from pytorch_trainer.iterators import _statemachine
@@ -553,6 +554,9 @@ def _fetch_setup(dataset, mem_size, mem_bulk):
     _fetch_dataset = dataset
     _fetch_mem_size = mem_size
     _fetch_mem_bulk = mem_bulk
+
+    numpy.random.seed(multiprocessing.current_process().pid)
+    torch.manual_seed(multiprocessing.current_process().pid)
 
 
 def _fetch_run(inputs):
