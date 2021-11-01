@@ -3,7 +3,7 @@ import collections
 import numpy
 import six
 import torch
-from torch._six import container_abcs
+from collections import abc as container_abcs
 
 import pytorch_trainer
 

@@ -2,7 +2,7 @@ from setuptools import setup, find_packages
 
 setup(
     name='pytorch-trainer',
-    version='1.3.1',
+    version='1.3.3',
     packages=find_packages(),
     url='https://github.com/Hiroshiba/pytorch-trainer',
     author='Kazuyuki Hiroshiba',
